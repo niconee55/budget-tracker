@@ -19,7 +19,7 @@ Supported categories:
 - Reads `.eml` files and plain text email dumps from a local folder.
 - Fetches matching Gmail messages through the Gmail API using OAuth.
 - Extracts transaction date, merchant, amount, last 4 digits when present, source filename, and a raw snippet.
-- Handles plaintext and HTML-only email bodies, including Discover purchase alerts from `discover@services.discover.com`.
+- Handles plaintext and HTML-only email bodies, including bank and card transaction alerts.
 - Applies a hybrid categorizer:
   - direct keyword and merchant rules
   - vector-style cosine similarity over tokenized category descriptors and merchant knowledge
@@ -52,7 +52,7 @@ python3 -m pip install -e '.[google]'
 
 ```bash
 PYTHONPATH=src python3 -m budget_tracker.google_cli \
-  --query 'from:alerts@capitalone.com newer_than:30d' \
+  --query 'from:bank-alerts@example.com newer_than:30d' \
   --max-results 100 \
   --output-json output/gmail-transactions.json \
   --summary-csv output/gmail-summary.csv \
@@ -71,7 +71,7 @@ Key flags:
 
 ## Stored Sync Config
 
-Google sync defaults now live in [google_sync/settings.json](/Users/niconee/Personal/budget_tracker/google_sync/settings.json). The OAuth client file and future token file live in the same `google_sync/` folder.
+Google sync defaults can live in `google_sync/settings.json`. The OAuth client file and future token file can live in the same `google_sync/` folder.
 
 This lets you keep the Gmail sender list, credentials path, token path, and Google Sheets destination together in one place without running a sync immediately.
 
