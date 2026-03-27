@@ -1,0 +1,59 @@
+{
+  "categories": [
+    {
+      "name": "Monthly Income",
+      "description": "Recurring income from payroll, salary, direct deposit, stipends, reimbursements, and other regular deposits.",
+      "keywords": ["payroll", "salary", "direct deposit", "deposit", "income", "paycheck", "stipend", "reimbursement"],
+      "merchants": ["employer", "payroll", "company payroll", "adp", "gusto", "paychex"]
+    },
+    {
+      "name": "Utilities",
+      "description": "Bills for electricity, gas, water, internet, phone service, cable, and other household utilities.",
+      "keywords": ["electric", "electricity", "gas", "water", "internet", "phone", "cable", "utility", "utilities", "bill"],
+      "merchants": ["verizon", "comcast", "xfinity", "att", "at&t", "spectrum", "coned", "pge", "national grid"]
+    },
+    {
+      "name": "Groceries",
+      "description": "Food and household grocery purchases from supermarkets, markets, and wholesale clubs.",
+      "keywords": ["grocery", "groceries", "supermarket", "market", "produce", "food", "whole foods", "trader joes", "aldi", "costco"],
+      "merchants": ["whole foods", "trader joe's", "trader joes", "aldi", "kroger", "safeway", "wegmans", "publix", "h-e-b", "heb", "costco", "walmart"]
+    },
+    {
+      "name": "Transportation",
+      "description": "Ride shares, fuel, public transit, parking, tolls, and other transportation costs.",
+      "keywords": ["uber", "lyft", "transit", "parking", "toll", "gas", "fuel", "train", "bus", "ride"],
+      "merchants": ["uber", "lyft", "shell", "chevron", "exxon", "bp", "marathon", "metro", "mta", "amtrak"]
+    },
+    {
+      "name": "Eating Out",
+      "description": "Restaurants, cafes, takeout, delivery, and other prepared food purchases.",
+      "keywords": ["restaurant", "cafe", "coffee", "takeout", "delivery", "dining", "food", "lunch", "dinner"],
+      "merchants": ["starbucks", "mcdonalds", "mcdonald's", "chipotle", "doordash", "ubereats", "uber eats", "grubhub", "dominos", "domino's", "subway", "panera"]
+    },
+    {
+      "name": "Healthcare",
+      "description": "Medical visits, pharmacies, clinics, prescriptions, and wellness services.",
+      "keywords": ["health", "medical", "doctor", "clinic", "pharmacy", "prescription", "rx", "dental", "vision"],
+      "merchants": ["cvs", "walgreens", "rite aid", "hospital", "urgent care", "pharmacy", "kaiser", "blue cross"]
+    },
+    {
+      "name": "Clothes/Personal Care",
+      "description": "Clothing, grooming, beauty, toiletries, and personal care purchases.",
+      "keywords": ["clothes", "clothing", "apparel", "beauty", "toiletries", "personal care", "salon", "style", "fashion"],
+      "merchants": ["target", "sephora", "ulta", "gap", "old navy", "nordstrom", "h&m", "macy's", "macys", "walmart"]
+    },
+    {
+      "name": "Housing Supplies",
+      "description": "Home improvement, cleaning supplies, hardware, furniture, and household goods.",
+      "keywords": ["home", "house", "hardware", "cleaning", "supplies", "furniture", "garden", "appliance", "decor"],
+      "merchants": ["home depot", "lowe's", "lowes", "ikea", "ace hardware", "bed bath", "container store", "wayfair"]
+    },
+    {
+      "name": "Entertainment",
+      "description": "Streaming, events, digital subscriptions, movies, games, concerts, and recreation.",
+      "keywords": ["entertainment", "streaming", "movie", "concert", "game", "games", "subscription", "music", "theater"],
+      "merchants": ["netflix", "spotify", "hulu", "disney", "amc", "regal", "steam", "apple", "youtube", "ticketmaster"]
+    }
+  ]
+}
+

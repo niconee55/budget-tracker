@@ -1,0 +1,8 @@
+From: alerts@pharmacy.example
+Subject: Prescription pickup
+Date: Sun, 06 Mar 2026 14:10:00
+
+Charge at CVS Pharmacy
+Amount: $17.64
+Date: 2026-03-06
+Card ending in 1234

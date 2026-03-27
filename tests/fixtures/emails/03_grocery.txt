@@ -1,0 +1,8 @@
+From: receipts@market.example
+Subject: Purchase receipt
+Date: Thu, 03 Mar 2026 18:20:00
+
+Purchase at Whole Foods
+Amount: $138.42
+Date: 2026-03-03
+Card ending in 1234

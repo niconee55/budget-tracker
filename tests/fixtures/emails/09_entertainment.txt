@@ -1,0 +1,8 @@
+From: billing@streaming.example
+Subject: Subscription receipt
+Date: Wed, 09 Mar 2026 07:05:00
+
+Merchant: Netflix
+Amount: $15.99
+Date: 2026-03-09
+Card ending in 1234

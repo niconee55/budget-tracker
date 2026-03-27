@@ -1,0 +1,6 @@
+Date: 2026-03-12
+Merchant: CVS Pharmacy
+Amount: -36.12
+Last4: 4242
+Description: Prescription refill
+

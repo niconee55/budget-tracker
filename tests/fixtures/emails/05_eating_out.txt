@@ -1,0 +1,8 @@
+From: orders@restaurant.example
+Subject: Dinner receipt
+Date: Sat, 05 Mar 2026 19:15:00
+
+Payment at Joe's Pizza
+Amount: $31.27
+Date: 2026-03-05
+Card ending in 1234

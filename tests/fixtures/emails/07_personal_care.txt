@@ -1,0 +1,8 @@
+From: orders@beauty.example
+Subject: Order confirmation
+Date: Mon, 07 Mar 2026 12:00:00
+
+Merchant: Sephora
+Amount: $54.73
+Date: 2026-03-07
+Card ending in 1234

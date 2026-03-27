@@ -1,0 +1,117 @@
+{
+  "categories": {
+    "Monthly Income": {
+      "keywords": ["payroll", "salary", "direct deposit", "income", "paycheck"],
+      "descriptors": ["income payroll salary employer deposit compensation wages pay period"]
+    },
+    "Utilities": {
+      "keywords": ["electric", "water", "gas bill", "internet", "utility", "verizon", "comcast", "coned", "xfinity", "broadband"],
+      "descriptors": ["utilities power gas water electricity sewer internet mobile phone energy bill cable broadband"]
+    },
+    "Groceries": {
+      "keywords": ["grocery", "supermarket", "aldi", "whole foods", "whole foods market", "trader joe", "trader joe's", "kroger", "costco", "safeway", "wegmans"],
+      "descriptors": ["groceries supermarket produce pantry food market wholesale household staples fresh produce"]
+    },
+    "Transportation": {
+      "keywords": ["uber", "lyft", "transit", "metro", "gas station", "parking", "toll", "mta", "metrocard", "shell", "exxon"],
+      "descriptors": ["transportation rideshare fuel commute parking train bus subway travel rideshare gas transit"]
+    },
+    "Eating Out": {
+      "keywords": ["restaurant", "cafe", "coffee", "doordash", "ubereats", "grubhub", "pizza", "chipotle", "takeout", "delivery"],
+      "descriptors": ["eating out restaurant cafe bar takeout delivery dining lunch dinner coffee fast casual"]
+    },
+    "Healthcare": {
+      "keywords": ["pharmacy", "clinic", "doctor", "health", "hospital", "dentist", "cvs pharmacy", "walgreens", "rite aid", "prescription"],
+      "descriptors": ["healthcare medical pharmacy clinic doctor dentist urgent care prescription medicine"]
+    },
+    "Clothes/Personal Care": {
+      "keywords": ["clothing", "apparel", "salon", "barber", "ulta", "sephora", "personal care", "beauty", "cosmetics"],
+      "descriptors": ["clothes apparel shoes grooming salon barber cosmetics skincare hygiene beauty"]
+    },
+    "Housing Supplies": {
+      "keywords": ["hardware", "ikea", "home depot", "lowes", "lowe's", "target home", "household", "cleaning supplies"],
+      "descriptors": ["housing supplies furniture hardware repair decor storage home improvement household cleaning supplies"]
+    },
+    "Entertainment": {
+      "keywords": ["netflix", "spotify", "movie", "cinema", "steam", "concert", "entertainment", "amc theaters", "amc theatres", "movie theater"],
+      "descriptors": ["entertainment streaming movie gaming music events leisure subscription theater tickets"]
+    }
+  },
+  "merchants": {
+    "Acme Payroll": {
+      "aliases": ["acme payroll", "acme salary", "direct deposit"],
+      "category": "Monthly Income",
+      "description": "employer payroll deposit wages salary pay period"
+    },
+    "Whole Foods": {
+      "aliases": ["whole foods", "wholefoods", "wf market"],
+      "category": "Groceries",
+      "description": "grocery supermarket produce pantry household food"
+    },
+    "Trader Joe's": {
+      "aliases": ["trader joe's", "trader joe", "trader joes"],
+      "category": "Groceries",
+      "description": "grocery supermarket produce pantry household food"
+    },
+    "Con Edison": {
+      "aliases": ["con ed", "coned", "con edison"],
+      "category": "Utilities",
+      "description": "electric utility power energy bill"
+    },
+    "Xfinity": {
+      "aliases": ["xfinity", "comcast xfinity", "comcast"],
+      "category": "Utilities",
+      "description": "internet utility broadband cable home service monthly bill"
+    },
+    "Uber": {
+      "aliases": ["uber", "uber trip", "uber ride"],
+      "category": "Transportation",
+      "description": "rideshare transportation trip commute car service"
+    },
+    "Joe's Pizza": {
+      "aliases": ["joe's pizza", "joes pizza", "pizza"],
+      "category": "Eating Out",
+      "description": "restaurant food pizza dinner takeout"
+    },
+    "Chipotle": {
+      "aliases": ["chipotle", "chipotle mexican grill"],
+      "category": "Eating Out",
+      "description": "restaurant lunch dinner takeout burrito fast casual dining"
+    },
+    "CVS Pharmacy": {
+      "aliases": ["cvs pharmacy", "cvs rx", "pharmacy"],
+      "category": "Healthcare",
+      "description": "pharmacy prescription medicine healthcare"
+    },
+    "Walgreens": {
+      "aliases": ["walgreens", "walgreens pharmacy"],
+      "category": "Healthcare",
+      "description": "pharmacy prescription medicine healthcare"
+    },
+    "Sephora": {
+      "aliases": ["sephora", "ulta beauty", "barber shop"],
+      "category": "Clothes/Personal Care",
+      "description": "beauty personal care cosmetics grooming"
+    },
+    "Home Depot": {
+      "aliases": ["home depot", "ikea", "lowes"],
+      "category": "Housing Supplies",
+      "description": "home improvement hardware housing supplies furniture"
+    },
+    "Lowe's": {
+      "aliases": ["lowes", "lowe's"],
+      "category": "Housing Supplies",
+      "description": "home improvement hardware housing supplies furniture"
+    },
+    "Netflix": {
+      "aliases": ["netflix", "spotify", "amc theaters"],
+      "category": "Entertainment",
+      "description": "streaming entertainment movie music subscription"
+    },
+    "AMC Theatres": {
+      "aliases": ["amc theatres", "amc theaters", "amc movie theater"],
+      "category": "Entertainment",
+      "description": "movie theater tickets entertainment concessions"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+From: billing@utility.example
+Subject: Your monthly statement
+Date: Wed, 02 Mar 2026 11:00:00
+
+Transaction at Con Edison
+Amount: $82.15
+Date: 2026-03-02
+Ending in 1234

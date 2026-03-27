@@ -1,0 +1,8 @@
+From: payroll@acme.example
+Subject: Direct deposit confirmation
+Date: Tue, 01 Mar 2026 09:00:00
+
+Merchant: Acme Payroll
+Amount: $2500.00
+Date: 2026-03-01
+Card ending in 1234

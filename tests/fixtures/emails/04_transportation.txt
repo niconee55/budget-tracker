@@ -1,0 +1,8 @@
+From: receipts@uber.example
+Subject: Your ride receipt
+Date: Fri, 04 Mar 2026 08:30:00
+
+Transaction from Uber
+Amount: $24.18
+Date: 2026-03-04
+Last 4 1234

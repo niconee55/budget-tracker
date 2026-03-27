@@ -1,0 +1,6 @@
+Date: 2026-03-11
+Merchant: Sephora
+Amount: -48.00
+Last4: 4242
+Description: Skincare and cosmetics
+

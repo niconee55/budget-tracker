@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "budget-tracker"
+version = "0.1.0"
+description = "Local budget tracker that parses email transactions and categorizes spending."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+google = [
+    "google-api-python-client>=2.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.0.0",
+]
+
+[tool.setuptools]
+packages = ["budget_tracker"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

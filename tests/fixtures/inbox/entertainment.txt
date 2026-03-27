@@ -1,0 +1,6 @@
+Date: 2026-03-09
+Merchant: Netflix
+Amount: -15.49
+Last4: 4242
+Description: Monthly streaming subscription
+

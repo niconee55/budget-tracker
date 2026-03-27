@@ -1,0 +1,8 @@
+From: receipts@hardware.example
+Subject: Store receipt
+Date: Tue, 08 Mar 2026 10:45:00
+
+Purchase at Home Depot
+Amount: $76.01
+Date: 2026-03-08
+Card ending in 1234

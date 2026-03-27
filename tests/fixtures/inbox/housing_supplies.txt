@@ -1,0 +1,6 @@
+Date: 2026-03-10
+Merchant: Home Depot
+Amount: -76.24
+Last4: 4242
+Description: Cleaning supplies and bulbs
+

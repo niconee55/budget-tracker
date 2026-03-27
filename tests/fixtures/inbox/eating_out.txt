@@ -1,0 +1,6 @@
+Date: 2026-03-13
+Merchant: Chipotle
+Amount: -14.29
+Last4: 4242
+Description: Lunch order
+

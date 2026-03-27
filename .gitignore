@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+
+# Virtual environments
+.venv/
+venv
+env/
+
+# Local outputs
+output/
+*.log
+
+# Google / personal sync data
+google_sync/*
+!google_sync/README.md
+
+# Common secret files
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
