@@ -1,0 +1,13 @@
+From: Venmo <venmo@venmo.com>
+Subject: Example Payroll LLC paid you $37.88
+Date: Wed, 25 Mar 2026 17:57:53 +0000
+
+Example Payroll LLC paid you 37.88!
+Example Payroll LLC paid you $ 37 . 88
+This is your NIL Club payout.
+See transaction
+Money credited to your Venmo account.
+Transaction details
+Date March 25, 2026
+Transaction ID 4000000000000000002
+Sent to @sample_user

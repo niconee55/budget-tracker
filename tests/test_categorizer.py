@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import unittest
+from decimal import Decimal
+from unittest.mock import Mock
 
-from budget_tracker.categorizer import categorize_transaction
+from budget_tracker.categorizer import TransactionCategorizer, categorize_transaction
+from budget_tracker.merchant_lookup import MerchantLookupResult
+from budget_tracker.parser import ParsedEmail
 
 
 class CategorizerTests(unittest.TestCase):
@@ -13,6 +17,7 @@ class CategorizerTests(unittest.TestCase):
             ("Whole Foods Market", "weekly groceries", "Groceries"),
             ("Uber", "airport ride", "Transportation"),
             ("Chipotle", "lunch order", "Eating Out"),
+            ("CHEF CHANG EXPRESS", "takeout order", "Eating Out"),
             ("CVS Pharmacy", "prescription refill", "Healthcare"),
             ("Sephora", "skincare and cosmetics", "Clothes/Personal Care"),
             ("Home Depot", "cleaning supplies and bulbs", "Housing Supplies"),
@@ -28,7 +33,61 @@ class CategorizerTests(unittest.TestCase):
             "Groceries",
         )
         self.assertEqual(
+            categorize_transaction("H Mart", "purchase receipt"),
+            "Groceries",
+        )
+        self.assertEqual(
+            categorize_transaction("HUDSON MARKET PLACE", "purchase receipt"),
+            "Eating Out",
+        )
+        self.assertEqual(
             categorize_transaction("AMC Theatres", "ticket purchase"),
             "Entertainment",
         )
 
+    def test_routes_beer_weed_and_non_gasoline_gas_descriptions_to_entertainment(self) -> None:
+        self.assertEqual(
+            categorize_transaction("Venmo", "beer after work"),
+            "Entertainment",
+        )
+        self.assertEqual(
+            categorize_transaction("Venmo", "weed run 🍃"),
+            "Entertainment",
+        )
+        self.assertEqual(
+            categorize_transaction("Venmo", "gas for the blunt 🔥"),
+            "Entertainment",
+        )
+        self.assertEqual(
+            categorize_transaction("Shell", "gas station fill up"),
+            "Transportation",
+        )
+        self.assertEqual(
+            categorize_transaction("Ryan Winkler", "Ryan Winkler paid you $22.00 Beer Money credited to your Venmo account"),
+            "Entertainment",
+        )
+
+    def test_uses_merchant_lookup_to_categorize_unknown_businesses(self) -> None:
+        lookup_service = Mock()
+        lookup_service.lookup.return_value = MerchantLookupResult(
+            category="Eating Out",
+            confidence=0.88,
+            details_summary="salad chain",
+            rationale="Sweetgreen is a fast casual salad restaurant chain.",
+            source="codex_web_search",
+        )
+        transaction = TransactionCategorizer(lookup_service=lookup_service).categorize(
+            ParsedEmail(
+                source_name="generic",
+                date="2026-03-30",
+                merchant="Sweetgreen",
+                amount=Decimal("18.42"),
+                account_last4="1234",
+                raw_snippet="purchase receipt",
+                source_file="lookup.txt",
+            )
+        )
+
+        self.assertEqual(transaction.category, "Eating Out")
+        self.assertGreaterEqual(transaction.confidence, 0.72)
+        lookup_service.lookup.assert_called_once_with("Sweetgreen", "purchase receipt")

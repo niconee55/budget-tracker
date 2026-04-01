@@ -18,6 +18,8 @@ env/
 # Local outputs
 output/
 *.log
+tmp/
+SESSION_NOTES.md
 
 # Google / personal sync data
 google_sync/*

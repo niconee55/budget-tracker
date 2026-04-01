@@ -1,0 +1,67 @@
+From: Capital One Alerts <capitalone@notification.capitalone.com>
+To: user@example.com
+Subject: Capital One Purchase Alert
+Content-Type: multipart/alternative; boundary="boundary-123"
+
+--boundary-123
+Content-Type: text/plain; charset="utf-8"
+
+Capital One purchase alert.
+
+--boundary-123
+Content-Type: text/html; charset="utf-8"
+
+<html>
+  <body>
+    <div id="m_-752453589055989974body">
+      <div>
+        <table>
+          <tbody>
+            <tr>
+              <td>
+                <table>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <table>
+                          <tbody>
+                            <tr>
+                              <td>
+                                <table>
+                                  <tbody>
+                                    <tr>
+                                      <td>
+                                        <table>
+                                          <tbody>
+                                            <tr>
+                                              <td>
+                                                <p><span>Merchant: H Mart</span></p>
+                                                <p><span>Date: March 26, 2026</span></p>
+                                                <p><span>Amount: $12.34</span></p>
+                                                <p><span>Card ending in 4321</span></p>
+                                              </td>
+                                            </tr>
+                                          </tbody>
+                                        </table>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>
+
+--boundary-123--

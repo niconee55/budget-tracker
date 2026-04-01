@@ -1,0 +1,62 @@
+From: venmo@venmo.com
+To: user@example.com
+Subject: Venmo payment sent
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="VENMO-SENT"
+
+--VENMO-SENT
+Content-Type: text/plain; charset="utf-8"
+
+Open this message in HTML to see your payment details.
+
+--VENMO-SENT
+Content-Type: text/html; charset="utf-8"
+
+<html>
+  <body>
+    <div id="avWBGd-1306">
+      <div>
+        <table>
+          <tbody>
+            <tr>
+              <td>
+                <center>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <table>
+                            <tbody>
+                              <tr>
+                                <td>
+                                  <table>
+                                    <tbody>
+                                      <tr>
+                                        <td>
+                                          <div class="m_-7046490192417991158card-container">
+                                            <div>Ramen lunch</div>
+                                            <div>Amount: $19.50</div>
+                                            <div>Date: March 27, 2026</div>
+                                            <div>You paid Jordan $19.50</div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </center>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

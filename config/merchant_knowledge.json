@@ -1,24 +1,24 @@
 {
   "categories": {
     "Monthly Income": {
-      "keywords": ["payroll", "salary", "direct deposit", "income", "paycheck"],
-      "descriptors": ["income payroll salary employer deposit compensation wages pay period"]
+      "keywords": ["payroll", "salary", "direct deposit", "income", "paycheck", "payout", "nil club payout"],
+      "descriptors": ["income payroll salary employer deposit compensation wages pay period venmo payment received payout"]
     },
     "Utilities": {
       "keywords": ["electric", "water", "gas bill", "internet", "utility", "verizon", "comcast", "coned", "xfinity", "broadband"],
       "descriptors": ["utilities power gas water electricity sewer internet mobile phone energy bill cable broadband"]
     },
     "Groceries": {
-      "keywords": ["grocery", "supermarket", "aldi", "whole foods", "whole foods market", "trader joe", "trader joe's", "kroger", "costco", "safeway", "wegmans"],
-      "descriptors": ["groceries supermarket produce pantry food market wholesale household staples fresh produce"]
+      "keywords": ["grocery", "supermarket", "aldi", "whole foods", "whole foods market", "trader joe", "trader joe's", "kroger", "costco", "safeway", "wegmans", "h mart", "hmart", "large grocery"],
+      "descriptors": ["groceries supermarket produce pantry food wholesale household staples fresh produce korean grocery asian grocery large chain grocery"]
     },
     "Transportation": {
       "keywords": ["uber", "lyft", "transit", "metro", "gas station", "parking", "toll", "mta", "metrocard", "shell", "exxon"],
       "descriptors": ["transportation rideshare fuel commute parking train bus subway travel rideshare gas transit"]
     },
     "Eating Out": {
-      "keywords": ["restaurant", "cafe", "coffee", "doordash", "ubereats", "grubhub", "pizza", "chipotle", "takeout", "delivery"],
-      "descriptors": ["eating out restaurant cafe bar takeout delivery dining lunch dinner coffee fast casual"]
+      "keywords": ["restaurant", "cafe", "coffee", "doordash", "ubereats", "grubhub", "pizza", "chipotle", "takeout", "delivery", "deli", "bodega", "market place", "corner store", "breakfast", "bfast", "brunch", "lunch", "dinner"],
+      "descriptors": ["eating out restaurant cafe bar takeout delivery dining lunch dinner coffee fast casual prepared food deli bodega corner store neighborhood market nyc breakfast brunch venmo memo"]
     },
     "Healthcare": {
       "keywords": ["pharmacy", "clinic", "doctor", "health", "hospital", "dentist", "cvs pharmacy", "walgreens", "rite aid", "prescription"],
@@ -33,8 +33,8 @@
       "descriptors": ["housing supplies furniture hardware repair decor storage home improvement household cleaning supplies"]
     },
     "Entertainment": {
-      "keywords": ["netflix", "spotify", "movie", "cinema", "steam", "concert", "entertainment", "amc theaters", "amc theatres", "movie theater"],
-      "descriptors": ["entertainment streaming movie gaming music events leisure subscription theater tickets"]
+      "keywords": ["netflix", "spotify", "movie", "cinema", "steam", "concert", "entertainment", "amc theaters", "amc theatres", "movie theater", "beer", "weed", "cannabis", "dispensary", "edible", "joint", "blunt", "gas pack"],
+      "descriptors": ["entertainment streaming movie gaming music events leisure subscription theater tickets nightlife beer drinks bar cannabis weed dispensary edible smoking social outing"]
     }
   },
   "merchants": {
@@ -78,6 +78,16 @@
       "category": "Eating Out",
       "description": "restaurant lunch dinner takeout burrito fast casual dining"
     },
+    "CHEF CHANG EXPRESS": {
+      "aliases": ["chef chang express", "chef chang"],
+      "category": "Eating Out",
+      "description": "restaurant chinese food takeout delivery lunch dinner"
+    },
+    "HUDSON MARKET PLACE": {
+      "aliases": ["hudson market place", "hudson market", "market place"],
+      "category": "Eating Out",
+      "description": "prepared food deli bodega quick meal snacks drinks takeout"
+    },
     "CVS Pharmacy": {
       "aliases": ["cvs pharmacy", "cvs rx", "pharmacy"],
       "category": "Healthcare",
@@ -87,6 +97,11 @@
       "aliases": ["walgreens", "walgreens pharmacy"],
       "category": "Healthcare",
       "description": "pharmacy prescription medicine healthcare"
+    },
+    "H Mart": {
+      "aliases": ["h mart", "hmart"],
+      "category": "Groceries",
+      "description": "grocery supermarket produce pantry household food asian market"
     },
     "Sephora": {
       "aliases": ["sephora", "ulta beauty", "barber shop"],

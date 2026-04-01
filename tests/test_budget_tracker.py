@@ -42,6 +42,46 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(by_merchant["Uber"], "Transportation")
         self.assertEqual(by_merchant["Netflix"], "Entertainment")
 
+    def test_extracts_capital_one_notification_transaction_fields_from_inbox_fixture(self) -> None:
+        parsed = extract_transactions(INBOX_FIXTURES)
+        matches = [item for item in parsed if item.source_file == "capitalone_notification.eml"]
+
+        self.assertEqual(len(matches), 1)
+        transaction = matches[0]
+        categorizer = TransactionCategorizer()
+        self.assertEqual(categorizer.categorize(transaction).category, "Groceries")
+        self.assertEqual(transaction.merchant, "H Mart")
+        self.assertEqual(transaction.amount, Decimal("12.34"))
+        self.assertEqual(transaction.last4, "4321")
+
+    def test_extracts_venmo_transactions_and_ignores_brokerage_transfer(self) -> None:
+        parsed = extract_transactions(INBOX_FIXTURES)
+        venmo_transactions = [
+            item
+            for item in parsed
+            if item.source_file in {"venmo_sent.eml", "venmo_received.eml", "venmo_you_paid.txt", "venmo_paid_you.txt"}
+        ]
+
+        self.assertEqual(len(venmo_transactions), 4)
+        by_source = {item.source_file: item for item in venmo_transactions}
+        self.assertIn("venmo_sent.eml", by_source)
+        self.assertIn("venmo_received.eml", by_source)
+        self.assertIn("venmo_paid_you.txt", by_source)
+        self.assertIn("venmo_you_paid.txt", by_source)
+        self.assertNotIn("venmo_wealthfront_transfer.txt", by_source)
+        self.assertNotIn("venmo_history.txt", by_source)
+
+    def test_extracts_venmo_transactions_and_ignores_non_budget_noise(self) -> None:
+        parsed = extract_transactions(INBOX_FIXTURES)
+        matches = {item.source_file: item for item in parsed if item.source_file.startswith("venmo_")}
+
+        self.assertIn("venmo_paid_you.txt", matches)
+        self.assertIn("venmo_you_paid.txt", matches)
+        self.assertNotIn("venmo_history.txt", matches)
+        self.assertNotIn("venmo_wealthfront_transfer.txt", matches)
+        self.assertEqual(matches["venmo_paid_you.txt"].merchant, "Example Payroll LLC")
+        self.assertEqual(matches["venmo_you_paid.txt"].merchant, "Bfast")
+
 
 class CategorizerTests(unittest.TestCase):
     def test_categorizes_fixture_transactions_into_requested_categories(self) -> None:
@@ -70,6 +110,43 @@ class CategorizerTests(unittest.TestCase):
         self.assertEqual(categorized["Walgreens"], "Healthcare")
         self.assertEqual(categorized["Uber"], "Transportation")
         self.assertEqual(categorized["Netflix"], "Entertainment")
+
+    def test_categorizes_capital_one_notification_fixture_into_requested_category(self) -> None:
+        parsed = extract_transactions(INBOX_FIXTURES)
+        matches = [item for item in parsed if item.source_file == "capitalone_notification.eml"]
+        categorizer = TransactionCategorizer()
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(categorizer.categorize(matches[0]).category, "Groceries")
+
+    def test_categorizes_venmo_transactions_by_direction(self) -> None:
+        parsed = extract_transactions(INBOX_FIXTURES)
+        venmo_transactions = [
+            item
+            for item in parsed
+            if item.source_file in {"venmo_sent.eml", "venmo_received.eml", "venmo_you_paid.txt", "venmo_paid_you.txt"}
+        ]
+        categorizer = TransactionCategorizer()
+        categorized = {item.source_file: categorizer.categorize(item) for item in venmo_transactions}
+
+        self.assertEqual(categorized["venmo_received.eml"].category, "Eating Out")
+        self.assertEqual(categorized["venmo_received.eml"].amount, Decimal("-27.00"))
+        self.assertEqual(categorized["venmo_sent.eml"].category, "Eating Out")
+        self.assertEqual(categorized["venmo_sent.eml"].amount, Decimal("19.50"))
+
+    def test_categorizes_venmo_income_and_memo_spend(self) -> None:
+        parsed = extract_transactions(INBOX_FIXTURES)
+        categorizer = TransactionCategorizer()
+        by_file = {
+            item.source_file: categorizer.categorize(item)
+            for item in parsed
+            if item.source_file.startswith("venmo_")
+        }
+
+        self.assertEqual(by_file["venmo_paid_you.txt"].category, "Monthly Income")
+        self.assertEqual(by_file["venmo_paid_you.txt"].amount, Decimal("37.88"))
+        self.assertEqual(by_file["venmo_you_paid.txt"].category, "Eating Out")
+        self.assertEqual(by_file["venmo_you_paid.txt"].amount, Decimal("8.00"))
 
 
 class CliEndToEndTests(unittest.TestCase):

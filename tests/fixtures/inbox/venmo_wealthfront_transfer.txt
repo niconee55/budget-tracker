@@ -1,0 +1,11 @@
+From: Venmo <venmo@venmo.com>
+Subject: You paid Wealthfront Brokerage LLC $2,000.00
+Date: Thu, 26 Mar 2026 12:00:00 +0000
+
+You paid Wealthfront Brokerage LLC $2,000.00
+Transfer to savings
+See transaction
+Transaction details
+Date March 26, 2026
+Transaction ID 4000000000000000003
+Transfer from Wealthfront Brokerage LLC account

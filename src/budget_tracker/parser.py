@@ -12,6 +12,11 @@ from typing import Any
 
 from .config import load_email_sources
 
+try:
+    from bs4 import BeautifulSoup
+except ImportError:  # pragma: no cover
+    BeautifulSoup = None
+
 
 AMOUNT_FALLBACK_RE = re.compile(r"(-?\$?[0-9][0-9,]*\.[0-9]{2})")
 DATE_FALLBACK_RE = re.compile(
@@ -69,12 +74,14 @@ def parse_email_file(path: Path) -> dict[str, str]:
 
 def parse_email_bytes(raw_bytes: bytes) -> dict[str, str]:
     message = BytesParser(policy=policy.default).parsebytes(raw_bytes)
-    body = _extract_body_from_message(message)
+    plain_body, html_body = _extract_bodies_from_message(message)
+    body = _prefer_message_body(plain_body, html_body)
     return {
         "sender": message.get("From", ""),
         "subject": message.get("Subject", ""),
         "date_header": message.get("Date", ""),
         "body": body,
+        "html_body": html_body,
     }
 
 
@@ -86,6 +93,7 @@ def parse_email_text(text: str) -> dict[str, str]:
         "subject": headers.get("Subject", ""),
         "date_header": headers.get("Date", ""),
         "body": searchable_text,
+        "html_body": "",
     }
 
 
@@ -117,26 +125,76 @@ def extract_transaction_from_email_data(
 ) -> ParsedEmail | None:
     source_catalog = sources or load_email_sources()["sources"]
     source = match_source(email_data, source_catalog)
-    amount_text = _first_match(source.get("amount_patterns", []), email_data["body"]) or _first_regex(AMOUNT_FALLBACK_RE, email_data["body"])
-    merchant = _first_match(source.get("merchant_patterns", []), email_data["body"])
+    if _should_ignore_email(email_data, source):
+        return None
+    body = _source_body(email_data, source)
+    if source.get("name") == "venmo":
+        return _extract_venmo_transaction(email_data, source_file, source)
+    amount_text = _first_match(source.get("amount_patterns", []), body) or _first_regex(AMOUNT_FALLBACK_RE, body)
+    merchant = _first_match(source.get("merchant_patterns", []), body)
     if not merchant:
-        merchant = _first_regex_list(MERCHANT_FALLBACK_PATTERNS, email_data["body"])
-    date_text = _first_match(source.get("date_patterns", []), email_data["body"])
+        merchant = _first_regex_list(MERCHANT_FALLBACK_PATTERNS, body)
+    date_text = _first_match(source.get("date_patterns", []), body)
     if not date_text:
-        date_text = _parse_date_header(email_data["date_header"]) or _first_regex(DATE_FALLBACK_RE, email_data["body"])
-    last4 = _first_match(source.get("last4_patterns", []), email_data["body"]) or _first_regex(LAST4_FALLBACK_RE, email_data["body"])
+        date_text = _parse_date_header(email_data["date_header"]) or _first_regex(DATE_FALLBACK_RE, body)
+    last4 = _first_match(source.get("last4_patterns", []), body) or _first_regex(LAST4_FALLBACK_RE, body)
     if not amount_text or not merchant or not date_text:
         return None
     amount = _parse_amount(amount_text)
     if amount is None:
         return None
+    subject = email_data.get("subject", "")
+    snippet_prefix = _subject_snippet_prefix(subject)
+    snippet_source = " ".join(part for part in [snippet_prefix, body] if part)
     return ParsedEmail(
         source_name=source["name"],
         date=_normalize_date(date_text),
         merchant=_clean_value(merchant),
         amount=amount,
         account_last4=last4,
-        raw_snippet=_clip(email_data["body"]),
+        raw_snippet=_clip(snippet_source),
+        source_file=source_file,
+    )
+
+
+def _extract_venmo_transaction(
+    email_data: dict[str, str],
+    source_file: str,
+    source: dict[str, Any],
+) -> ParsedEmail | None:
+    body = email_data.get("body", "")
+    subject = email_data.get("subject", "")
+    combined = "\n".join(part for part in [subject, body] if part)
+    amount_text = _first_match(source.get("amount_patterns", []), combined) or _first_regex(AMOUNT_FALLBACK_RE, combined)
+    date_text = _first_match(source.get("date_patterns", []), body)
+    if not date_text:
+        date_text = _parse_date_header(email_data.get("date_header", "")) or _first_regex(DATE_FALLBACK_RE, body)
+    if not amount_text or not date_text:
+        return None
+
+    amount = _parse_amount(amount_text)
+    if amount is None:
+        return None
+
+    direction, counterpart = _parse_venmo_direction(subject, body)
+    note = _extract_venmo_note(subject, body)
+    merchant = _choose_venmo_merchant(direction, counterpart, note)
+    source_name = source["name"]
+    if direction == "incoming":
+        source_name = "venmo_incoming"
+    elif direction == "outgoing":
+        source_name = "venmo_outgoing"
+    snippet_parts = [subject]
+    if note:
+        snippet_parts.append(note)
+    snippet_parts.append(body)
+    return ParsedEmail(
+        source_name=source_name,
+        date=_normalize_date(date_text),
+        merchant=_clean_value(merchant),
+        amount=amount,
+        account_last4=None,
+        raw_snippet=_clip(" ".join(part for part in snippet_parts if part)),
         source_file=source_file,
     )
 
@@ -151,7 +209,24 @@ def match_source(email_data: dict[str, str], sources: list[dict[str, object]]) -
     return generic_source
 
 
-def _extract_body_from_message(message) -> str:
+def _should_ignore_email(email_data: dict[str, str], source: dict[str, object]) -> bool:
+    subject = email_data.get("subject", "").lower()
+    body = email_data.get("body", "").lower()
+    if source.get("name") == "venmo" and "transaction history" in subject:
+        return True
+    if "wealthfront brokerage llc" in body and any(
+        token in body for token in ("transfer", "deposited to", "transferred has been deposited", "instant payment")
+    ):
+        return True
+    if source.get("name") == "discover":
+        if "new statement online" in subject or "paperless statement is ready" in body:
+            return True
+        if "received your payment" in subject or "thanks for your payment" in body:
+            return True
+    return False
+
+
+def _extract_bodies_from_message(message) -> tuple[str, str]:
     plain_parts: list[str] = []
     html_parts: list[str] = []
     if message.is_multipart():
@@ -167,23 +242,59 @@ def _extract_body_from_message(message) -> str:
             if content_type == "text/plain":
                 plain_parts.append(content)
             elif content_type == "text/html":
-                html_parts.append(_strip_html(content))
+                html_parts.append(content)
         plain_body = "\n".join(part.strip() for part in plain_parts if part.strip())
         html_body = "\n".join(part.strip() for part in html_parts if part.strip())
-        if plain_body and html_body:
-            return _prefer_richer_body(plain_body, html_body)
-        if plain_body:
-            return plain_body
-        if html_body:
-            return html_body
-        return ""
+        return plain_body, html_body
 
     content = _part_content(message)
     if not content:
-        return ""
+        return "", ""
     if message.get_content_type() == "text/html":
-        return _strip_html(content)
-    return content
+        return "", content
+    return content, ""
+
+
+def _prefer_message_body(plain_body: str, html_body: str) -> str:
+    stripped_html = _strip_html(html_body) if html_body else ""
+    if plain_body and stripped_html:
+        return _prefer_richer_body(plain_body, stripped_html)
+    if plain_body:
+        return plain_body
+    return stripped_html
+
+
+def _source_body(email_data: dict[str, str], source: dict[str, Any]) -> str:
+    html_body = email_data.get("html_body", "")
+    selectors: list[str] = []
+    body_selectors = source.get("body_selectors", [])
+    if isinstance(body_selectors, list):
+        selectors.extend(str(item) for item in body_selectors)
+    content_block_selector = source.get("content_block_selector")
+    if content_block_selector:
+        selectors.append(str(content_block_selector))
+    selected_body = _extract_html_selectors_text(html_body, selectors)
+    if selected_body:
+        return selected_body
+    return email_data["body"]
+
+
+def _extract_html_selectors_text(html: str, selectors: list[str]) -> str:
+    if not html or not selectors or BeautifulSoup is None:
+        return ""
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+    except Exception:
+        return ""
+    for selector in selectors:
+        try:
+            nodes = soup.select(selector)
+        except Exception:
+            continue
+        texts = [" ".join(node.get_text(" ", strip=True).split()) for node in nodes if node.get_text(" ", strip=True)]
+        if texts:
+            return _clip(" ".join(texts), limit=500)
+    return ""
 
 
 def _split_headers(text: str) -> tuple[dict[str, str], str]:
@@ -257,6 +368,85 @@ def _normalize_date(value: str) -> str:
     return cleaned
 
 
+def _parse_venmo_direction(subject: str, body: str) -> tuple[str | None, str | None]:
+    subject_matchers = [
+        (re.compile(r"^(?P<counterpart>.+?) paid you \$?[0-9][0-9,]*\.[0-9]{2}$", re.IGNORECASE), "incoming"),
+        (re.compile(r"^you paid (?P<counterpart>.+?) \$?[0-9][0-9,]*\.[0-9]{2}$", re.IGNORECASE), "outgoing"),
+        (re.compile(r"^payment from (?P<counterpart>.+?) for \$?[0-9][0-9,]*\.[0-9]{2}$", re.IGNORECASE), "incoming"),
+    ]
+    cleaned_subject = " ".join(subject.split())
+    for pattern, direction in subject_matchers:
+        match = pattern.search(cleaned_subject)
+        if match:
+            return direction, _clean_value(match.group("counterpart"))
+
+    body_matchers = [
+        (re.compile(r"(?P<counterpart>[A-Za-z0-9 '&./-]{2,80}?) paid you \$?[0-9][0-9,]*\.[0-9]{2}", re.IGNORECASE), "incoming"),
+        (re.compile(r"you paid (?P<counterpart>[A-Za-z0-9 '&./-]{2,80}?) \$?[0-9][0-9,]*\.[0-9]{2}", re.IGNORECASE), "outgoing"),
+        (re.compile(r"payment from (?P<counterpart>[A-Za-z0-9 '&./-]{2,80}?) for \$?[0-9][0-9,]*\.[0-9]{2}", re.IGNORECASE), "incoming"),
+    ]
+    for pattern, direction in body_matchers:
+        match = pattern.search(body)
+        if match:
+            return direction, _clean_value(match.group("counterpart"))
+
+    lowered_body = body.lower()
+    if "paid you" in lowered_body:
+        return "incoming", None
+    if "you paid" in lowered_body:
+        return "outgoing", None
+    return None, None
+
+
+def _extract_venmo_note(subject: str, body: str) -> str | None:
+    collapsed_subject = " ".join(subject.split())
+    lines = [re.sub(r"\s+", " ", line).strip() for line in body.splitlines()]
+    skip_prefixes = (
+        "see transaction",
+        "transaction details",
+        "date ",
+        "status ",
+        "transaction id",
+        "payment method",
+        "sent from",
+        "sent to",
+        "money credited",
+        "for any issues",
+        "contact us",
+        "venmo is a service",
+        "this payment will",
+        "if you don't recognize",
+        "please do not reply",
+    )
+    for line in lines:
+        if not line:
+            continue
+        lowered = line.lower()
+        if lowered == collapsed_subject.lower():
+            continue
+        compact = re.sub(r"\s+", "", lowered)
+        if compact == re.sub(r"\s+", "", collapsed_subject.lower()):
+            continue
+        if any(lowered.startswith(prefix) for prefix in skip_prefixes):
+            continue
+        if "transaction history" in lowered:
+            continue
+        if line.count("$") or re.fullmatch(r"[A-Za-z0-9_@.\- ]+\$?\s*[0-9 .]+!?", line):
+            continue
+        return line
+    return None
+
+
+def _choose_venmo_merchant(direction: str | None, counterpart: str | None, note: str | None) -> str:
+    if direction == "outgoing" and note:
+        return note
+    if counterpart:
+        return counterpart
+    if note:
+        return note
+    return "Venmo"
+
+
 def _parse_amount(value: str) -> Decimal | None:
     try:
         return Decimal(value.replace(",", "").replace("$", "").strip())
@@ -271,6 +461,15 @@ def _clean_value(value: str) -> str:
 def _clip(value: str, limit: int = 240) -> str:
     single_line = " ".join(value.split())
     return single_line[:limit]
+
+
+def _subject_snippet_prefix(subject: str) -> str:
+    cleaned = subject.strip()
+    if not cleaned:
+        return ""
+    if cleaned == "Capital One Purchase Alert":
+        return "Capital One purchase alert"
+    return cleaned
 
 
 def _part_content(part) -> str:

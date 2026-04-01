@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from pathlib import Path
 
 from .categorizer import TransactionCategorizer
 from .models import Transaction
@@ -13,6 +12,7 @@ from .parser import extract_transaction_from_email_data, parse_email_bytes
 class GmailSyncResult:
     transactions: list[Transaction]
     skipped_message_ids: list[str]
+    processed_message_ids: list[str] | None = None
 
 
 def fetch_transactions_from_gmail(
@@ -20,10 +20,15 @@ def fetch_transactions_from_gmail(
     query: str,
     max_results: int,
     categorizer: TransactionCategorizer | None = None,
+    since_epoch_ms: int | None = None,
+    since_internal_date_ms: int | None = None,
 ) -> GmailSyncResult:
     categorizer = categorizer or TransactionCategorizer()
+    if since_epoch_ms is not None and since_internal_date_ms is None:
+        since_internal_date_ms = since_epoch_ms
     parsed_transactions: list[Transaction] = []
     skipped_message_ids: list[str] = []
+    processed_message_ids: list[str] = []
     page_token: str | None = None
     remaining = max_results
 
@@ -47,6 +52,9 @@ def fetch_transactions_from_gmail(
                     .get(userId="me", id=message_id, format="raw")
                     .execute()
                 )
+                internal_date = int(detail.get("internalDate", "0") or "0")
+                if since_internal_date_ms is not None and internal_date <= since_internal_date_ms:
+                    continue
                 raw_payload = detail.get("raw")
                 if not raw_payload:
                     skipped_message_ids.append(message_id)
@@ -58,17 +66,22 @@ def fetch_transactions_from_gmail(
                 skipped_message_ids.append(message_id)
                 continue
 
+            processed_message_ids.append(message_id)
             if parsed is None:
                 skipped_message_ids.append(message_id)
                 continue
             parsed_transactions.append(categorizer.categorize(parsed))
 
-        remaining = max_results - len(parsed_transactions) - len(skipped_message_ids)
+        remaining = max_results - len(processed_message_ids)
         page_token = response.get("nextPageToken")
         if not page_token:
             break
 
-    return GmailSyncResult(transactions=parsed_transactions, skipped_message_ids=skipped_message_ids)
+    return GmailSyncResult(
+        transactions=parsed_transactions,
+        skipped_message_ids=skipped_message_ids,
+        processed_message_ids=processed_message_ids,
+    )
 
 
 def decode_gmail_raw_message(raw_payload: str) -> bytes:
@@ -97,6 +110,7 @@ def build_transaction_rows(transactions: list[Transaction]) -> list[list[str]]:
         "date",
         "merchant",
         "amount",
+        "source",
         "category",
         "source_name",
         "source_file",
@@ -110,6 +124,7 @@ def build_transaction_rows(transactions: list[Transaction]) -> list[list[str]]:
                 transaction.date,
                 transaction.merchant,
                 format(transaction.amount, "f"),
+                transaction.source,
                 transaction.category,
                 transaction.source_name,
                 transaction.source_file,
@@ -127,7 +142,3 @@ def build_summary_rows(categorizer: TransactionCategorizer, transactions: list[T
     for category, total in summary.items():
         rows.append([category, total])
     return rows
-
-
-def ensure_parent(path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)

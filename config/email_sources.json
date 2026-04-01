@@ -1,6 +1,34 @@
 {
   "sources": [
     {
+      "name": "venmo",
+      "sender_patterns": [
+        "venmo@venmo.com",
+        "venmo\\.com"
+      ],
+      "subject_patterns": [],
+      "amount_patterns": [
+        "\\$(-?[0-9][0-9,]*\\.[0-9]{2})",
+        "(?:you\\s+paid|you\\s+sent|you\\s+received|paid\\s+you|received\\s+from|payment\\s+sent|payment\\s+received|transfer(?:red)?)\\D{0,80}\\$?(-?[0-9][0-9,]*\\.[0-9]{2})"
+      ],
+      "merchant_patterns": [
+        "(?:you\\s+paid|you\\s+sent|you\\s+received|paid\\s+you|received\\s+from|payment\\s+sent|payment\\s+received)\\s+(?:to|from)?\\s*([A-Za-z0-9 '&./-]{2,80}?)(?=\\s+for\\s+|\\s+on\\s+|[.,]|$)",
+        "(?:note|memo)\\s*[:|-]\\s*([^\\n\\r.]{2,80})",
+        "(?:to|from|with)\\s+([A-Za-z0-9 '&./-]{2,80})"
+      ],
+      "date_patterns": [
+        "date\\s*[:|-]\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})",
+        "(?:on|dated)\\s+([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})"
+      ],
+      "last4_patterns": [
+        "(?:last 4|ending in|card ending in|account ending in)\\s*(?:[:#-]?\\s*)?(\\d{4})"
+      ],
+      "ignore_patterns": [
+        "wealthfront brokerage llc.{0,120}(?:\\$?2,000|2000)",
+        "savings.{0,120}(?:wealthfront brokerage llc|wealthfront).{0,120}(?:\\$?2,000|2000)"
+      ]
+    },
+    {
       "name": "discover",
       "sender_patterns": [
         "discover@services\\.discover\\.com",
@@ -20,6 +48,36 @@
       "date_patterns": [
         "date\\s*[:|-]\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})",
         "(?:transaction date|purchase date|posted date|on|dated)\\s*[:|-]?\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})"
+      ],
+      "last4_patterns": [
+        "(?:last 4|ending in|card ending in|account ending in)\\s*(?:[:#-]?\\s*)?(\\d{4})"
+      ]
+    },
+    {
+      "name": "capital_one_zelle",
+      "sender_patterns": [
+        "capitalone@notification\\.capitalone\\.com",
+        "notification\\.capitalone\\.com"
+      ],
+      "subject_patterns": [
+        "zelle"
+      ],
+      "body_selectors": [
+        "#m_-6797248785071591561body > div:nth-child(1) > table > tbody > tr > td > table:nth-child(6) > tbody > tr > td > p",
+        "#m_-5746832775708897921body > div:nth-child(1) > table > tbody > tr > td > table:nth-child(5) > tbody > tr > td > p"
+      ],
+      "amount_patterns": [
+        "\\$(-?[0-9][0-9,]*\\.[0-9]{2})",
+        "(?:sent|received|payment(?:\\s+to|\\s+from)?|zelle)\\D{0,80}\\$?(-?[0-9][0-9,]*\\.[0-9]{2})"
+      ],
+      "merchant_patterns": [
+        "(?:note|memo)\\s*[:|-]\\s*([^\\n\\r.]{2,80})",
+        "(?:to|from)\\s+([A-Za-z0-9 '&./-]{2,80}?)(?=\\s+on\\s+|\\s+for\\s+|[.,]|$)",
+        "(?:recipient|sender|contact)\\s*[:|-]\\s*([A-Za-z0-9 '&./-]{2,80})"
+      ],
+      "date_patterns": [
+        "on\\s+([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})",
+        "date\\s*[:|-]\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})"
       ],
       "last4_patterns": [
         "(?:last 4|ending in|card ending in|account ending in)\\s*(?:[:#-]?\\s*)?(\\d{4})"
@@ -49,26 +107,83 @@
       "name": "capital_one_placeholder",
       "sender_patterns": [
         "capitalone\\.com",
-        "capital one"
+        "capital one",
+        "capitalone@notification\\.capitalone\\.com",
+        "notification\\.capitalone\\.com"
       ],
       "subject_patterns": [
         "purchase",
-        "card"
+        "card",
+        "alert",
+        "notification"
       ],
       "amount_patterns": [
-        "\\$(-?[0-9][0-9,]*\\.[0-9]{2})"
+        "\\$(-?[0-9][0-9,]*\\.[0-9]{2})",
+        "(?:purchase|charge|transaction)\\s+of\\s+\\$(-?[0-9][0-9,]*\\.[0-9]{2})"
       ],
       "merchant_patterns": [
+        "merchant\\s*[:|-]\\s*([A-Za-z0-9 '&./*-]{2,80})",
+        "(?:purchase|charge|transaction)\\s+of\\s+\\$[-]?[0-9][0-9,]*\\.[0-9]{2}\\s+at\\s+([A-Za-z0-9 '&./*-]{2,80}?)(?=\\s+on\\s+|[.,]|$)",
         "(?:charged|purchase|transaction|payment)\\s+(?:at|from|with)\\s+([A-Za-z0-9 '&./-]{2,60})(?=$|\\n)",
         "(?:charged|purchase|transaction|payment).{0,40}?(?:at|from|with)\\s+([A-Za-z0-9 '&./-]{2,60}?)(?=\\s+on\\s+|\\s+for\\s+|[.,]|$)",
         "(?:at|from)\\s+([A-Za-z0-9 '&./-]{2,60})"
       ],
       "date_patterns": [
-        "on\\s+([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4})"
+        "on\\s+([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4})",
+        "date\\s*[:|-]\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2})"
       ],
       "last4_patterns": [
-        "(?:ending in|last 4)\\s*(?:[:#-]?\\s*)?(\\d{4})"
+        "(?:ending in|last 4|card ending in|account ending in)\\s*(?:[:#-]?\\s*)?(\\d{4})"
       ]
+    },
+    {
+      "name": "capital_one_zelle",
+      "sender_patterns": [
+        "capitalone@notification\\.capitalone\\.com",
+        "notification\\.capitalone\\.com"
+      ],
+      "subject_patterns": [
+        "zelle",
+        "payment",
+        "money request",
+        "money sent",
+        "money received"
+      ],
+      "content_block_selector": "#m_-5746832775708897921body > div:nth-child(1) > table > tbody > tr > td > table:nth-child(5) > tbody > tr > td > p",
+      "content_block_description": "Target the paragraph content in the provided Capital One email HTML block where the Zelle transaction details appear.",
+      "amount_patterns": [
+        "\\$(-?[0-9][0-9,]*\\.[0-9]{2})",
+        "(?:sent|received|payment|request).{0,80}?\\$(-?[0-9][0-9,]*\\.[0-9]{2})"
+      ],
+      "merchant_patterns": [
+        "(?:to|from)\\s+([A-Za-z0-9 '&./@*-]{2,80}?)(?=\\s+on\\s+|\\s+for\\s+|[.,]|$)",
+        "(?:payment|money\\s+(?:sent|received)|request).{0,120}?(?:to|from)\\s+([A-Za-z0-9 '&./@*-]{2,80}?)(?=\\s+on\\s+|\\s+for\\s+|[.,]|$)"
+      ],
+      "date_patterns": [
+        "on\\s+([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4})",
+        "date\\s*[:|-]\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})"
+      ],
+      "last4_patterns": [
+        "(?:ending in|account ending in|last 4)\\s*(?:[:#-]?\\s*)?(\\d{4})"
+      ]
+    },
+    {
+      "name": "venmo",
+      "sender_patterns": [
+        "venmo@venmo\\.com",
+        "venmo\\.com"
+      ],
+      "subject_patterns": [],
+      "amount_patterns": [
+        "\\$\\s*(-?[0-9][0-9,]*\\.[0-9]{2})",
+        "(?:paid you|you paid|payment from)\\s+.+?\\s+\\$\\s*(-?[0-9][0-9,]*\\.[0-9]{2})"
+      ],
+      "merchant_patterns": [],
+      "date_patterns": [
+        "date\\s+([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2})",
+        "date\\s*[:|-]\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2})"
+      ],
+      "last4_patterns": []
     }
   ]
 }

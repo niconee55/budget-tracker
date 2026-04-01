@@ -14,9 +14,9 @@
     },
     {
       "name": "Groceries",
-      "description": "Food and household grocery purchases from supermarkets, markets, and wholesale clubs.",
-      "keywords": ["grocery", "groceries", "supermarket", "market", "produce", "food", "whole foods", "trader joes", "aldi", "costco"],
-      "merchants": ["whole foods", "trader joe's", "trader joes", "aldi", "kroger", "safeway", "wegmans", "publix", "h-e-b", "heb", "costco", "walmart"]
+      "description": "Food and household grocery purchases from larger supermarkets, specialty grocers, and wholesale clubs. In NYC, favor larger named grocery chains over small neighborhood markets.",
+      "keywords": ["grocery", "groceries", "supermarket", "produce", "food", "whole foods", "trader joes", "aldi", "costco", "hmart", "h mart", "large grocery"],
+      "merchants": ["whole foods", "trader joe's", "trader joes", "aldi", "kroger", "safeway", "wegmans", "publix", "h-e-b", "heb", "costco", "walmart", "h mart", "hmart"]
     },
     {
       "name": "Transportation",
@@ -26,9 +26,9 @@
     },
     {
       "name": "Eating Out",
-      "description": "Restaurants, cafes, takeout, delivery, and other prepared food purchases.",
-      "keywords": ["restaurant", "cafe", "coffee", "takeout", "delivery", "dining", "food", "lunch", "dinner"],
-      "merchants": ["starbucks", "mcdonalds", "mcdonald's", "chipotle", "doordash", "ubereats", "uber eats", "grubhub", "dominos", "domino's", "subway", "panera"]
+      "description": "Restaurants, cafes, takeout, delivery, delis, bodegas, and other prepared food purchases. In NYC, smaller neighborhood markets often belong here rather than Groceries.",
+      "keywords": ["restaurant", "cafe", "coffee", "takeout", "delivery", "dining", "food", "lunch", "dinner", "deli", "bodega", "market place", "corner store"],
+      "merchants": ["starbucks", "mcdonalds", "mcdonald's", "chipotle", "doordash", "ubereats", "uber eats", "grubhub", "dominos", "domino's", "subway", "panera", "hudson market place"]
     },
     {
       "name": "Healthcare",
@@ -53,7 +53,12 @@
       "description": "Streaming, events, digital subscriptions, movies, games, concerts, and recreation.",
       "keywords": ["entertainment", "streaming", "movie", "concert", "game", "games", "subscription", "music", "theater"],
       "merchants": ["netflix", "spotify", "hulu", "disney", "amc", "regal", "steam", "apple", "youtube", "ticketmaster"]
+    },
+    {
+      "name": "Unknown",
+      "description": "Transactions that could not be confidently categorized. Review these manually and update merchant knowledge as needed.",
+      "keywords": ["unknown", "uncategorized", "misc"],
+      "merchants": []
     }
   ]
 }
-

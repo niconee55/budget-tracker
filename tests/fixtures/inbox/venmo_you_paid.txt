@@ -1,0 +1,14 @@
+From: Venmo <venmo@venmo.com>
+Subject: You paid Casey Rivera $8.00
+Date: Sun, 22 Mar 2026 16:39:57 +0000
+
+You paid Casey Rivera $8.00
+You paid Casey Rivera $ 8 . 00
+Bfast
+See transaction
+Transaction details
+Date Mar 22, 2026
+Status Pending
+Transaction ID 4000000000000000001
+Payment Method Venmo balance
+Sent from @sample_user
