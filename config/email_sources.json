@@ -54,6 +54,45 @@
       ]
     },
     {
+      "name": "capital_one_deposit",
+      "sender_patterns": [
+        "capitalone@notification\\.capitalone\\.com",
+        "capitalone@notification\\.captialone\\.com",
+        "notification\\.capitalone\\.com",
+        "notification\\.captialone\\.com"
+      ],
+      "subject_patterns": [
+        "deposit",
+        "received money",
+        "money received",
+        "payment received"
+      ],
+      "body_match_patterns": [
+        "received a deposit of \\$[0-9][0-9,]*\\.[0-9]{2}",
+        "deposit(?:ed)?\\s+into\\s+your\\s+account\\s+ending\\s+in\\s+\\d{4}",
+        "payroll\\s+from\\s+[A-Za-z0-9 '&./-]{2,80}"
+      ],
+      "body_selectors": [
+        "#m_1774081847278880687body > div:nth-child(1) > table > tbody > tr > td > table:nth-child(5) > tbody > tr > td > p:nth-child(2)",
+        "#m_1774081847278880687body > div:nth-child(1) > table > tbody > tr > td > table:nth-child(4)"
+      ],
+      "amount_patterns": [
+        "\\$(-?[0-9][0-9,]*\\.[0-9]{2})",
+        "(?:deposit|received|credited|payment)\\D{0,80}\\$?(-?[0-9][0-9,]*\\.[0-9]{2})"
+      ],
+      "merchant_patterns": [
+        "(?:from|sender|payor|payer|company|employer)\\s*[:|-]?\\s*([A-Za-z0-9 '&./-]{2,80})",
+        "(direct deposit|payroll deposit|deposit)"
+      ],
+      "date_patterns": [
+        "date\\s*[:|-]\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})",
+        "on\\s+([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}/\\d{1,2}/\\d{2,4})"
+      ],
+      "last4_patterns": [
+        "(?:ending in|last 4|account ending in)\\s*(?:[:#-]?\\s*)?(\\d{4})"
+      ]
+    },
+    {
       "name": "capital_one_zelle",
       "sender_patterns": [
         "capitalone@notification\\.capitalone\\.com",
@@ -84,6 +123,35 @@
       ]
     },
     {
+      "name": "capital_one_withdrawal",
+      "sender_patterns": [
+        "capitalone@notification\\.capitalone\\.com",
+        "notification\\.capitalone\\.com"
+      ],
+      "subject_patterns": [
+        "withdrawal notice"
+      ],
+      "body_selectors": [
+        "table.darkmode td.webfont"
+      ],
+      "amount_patterns": [
+        "amount\\s*:\\s*\\$(-?[0-9][0-9,]*\\.[0-9]{2})",
+        "withdrawal\\D{0,80}\\$(-?[0-9][0-9,]*\\.[0-9]{2})"
+      ],
+      "merchant_patterns": [
+        "([A-Za-z0-9 '&./*-]{2,80})\\s+has\\s+initiated\\s+the\\s+following\\s+withdrawal",
+        "to\\s+([A-Za-z0-9 '&./*-]{2,80})"
+      ],
+      "date_patterns": [
+        "submitted on\\s*:\\s*([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4})",
+        "on\\s+([A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4})"
+      ],
+      "last4_patterns": [
+        "(?:from\\s*:\\s*)?account ending in\\s*(\\d{4})",
+        "(?:ending in|last 4|account ending in)\\s*(?:[:#-]?\\s*)?(\\d{4})"
+      ]
+    },
+    {
       "name": "generic",
       "sender_patterns": [],
       "subject_patterns": [],
@@ -107,23 +175,33 @@
       "name": "capital_one_placeholder",
       "sender_patterns": [
         "capitalone\\.com",
+        "captialone\\.com",
         "capital one",
         "capitalone@notification\\.capitalone\\.com",
+        "capitalone@notification\\.captialone\\.com",
         "notification\\.capitalone\\.com"
       ],
       "subject_patterns": [
         "purchase",
         "card",
         "alert",
-        "notification"
+        "notification",
+        "charged to your account"
+      ],
+      "body_match_patterns": [
+        "a\\s+purchase\\s+was\\s+charged\\s+to\\s+your\\s+account",
+        "pending\\s+authorization\\s+or\\s+purchase\\s+in\\s+the\\s+amount\\s+of\\s+\\$[0-9][0-9,]*\\.[0-9]{2}"
       ],
       "amount_patterns": [
         "\\$(-?[0-9][0-9,]*\\.[0-9]{2})",
-        "(?:purchase|charge|transaction)\\s+of\\s+\\$(-?[0-9][0-9,]*\\.[0-9]{2})"
+        "(?:purchase|charge|transaction)\\s+of\\s+\\$(-?[0-9][0-9,]*\\.[0-9]{2})",
+        "pending\\s+authorization\\s+or\\s+purchase\\s+in\\s+the\\s+amount\\s+of\\s+\\$(-?[0-9][0-9,]*\\.[0-9]{2})"
       ],
       "merchant_patterns": [
         "merchant\\s*[:|-]\\s*([A-Za-z0-9 '&./*-]{2,80})",
         "(?:purchase|charge|transaction)\\s+of\\s+\\$[-]?[0-9][0-9,]*\\.[0-9]{2}\\s+at\\s+([A-Za-z0-9 '&./*-]{2,80}?)(?=\\s+on\\s+|[.,]|$)",
+        "on\\s+[A-Za-z]{3,9}\\s+\\d{1,2},\\s+\\d{4},\\s+at\\s+([A-Za-z0-9 '&./*-]{2,80}?),\\s+a\\s+pending\\s+authorization\\s+or\\s+purchase\\s+in\\s+the\\s+amount\\s+of\\s+\\$[-]?[0-9][0-9,]*\\.[0-9]{2}",
+        "([A-Za-z0-9 '&./*-]{2,80}?),\\s+a\\s+pending\\s+authorization\\s+or\\s+purchase\\s+in\\s+the\\s+amount\\s+of\\s+\\$[-]?[0-9][0-9,]*\\.[0-9]{2}",
         "(?:charged|purchase|transaction|payment)\\s+(?:at|from|with)\\s+([A-Za-z0-9 '&./-]{2,60})(?=$|\\n)",
         "(?:charged|purchase|transaction|payment).{0,40}?(?:at|from|with)\\s+([A-Za-z0-9 '&./-]{2,60}?)(?=\\s+on\\s+|\\s+for\\s+|[.,]|$)",
         "(?:at|from)\\s+([A-Za-z0-9 '&./-]{2,60})"

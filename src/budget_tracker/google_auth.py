@@ -13,6 +13,7 @@ def load_google_credentials(credentials_file: Path, token_file: Path, scopes: li
     scopes = scopes or GOOGLE_API_SCOPES
     try:
         from google.auth.transport.requests import Request
+        from google.auth.exceptions import RefreshError
         from google.oauth2.credentials import Credentials
         from google_auth_oauthlib.flow import InstalledAppFlow
     except ImportError as exc:
@@ -31,9 +32,17 @@ def load_google_credentials(credentials_file: Path, token_file: Path, scopes: li
             creds = None
 
     if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-        token_file.parent.mkdir(parents=True, exist_ok=True)
-        token_file.write_text(creds.to_json())
+        try:
+            creds.refresh(Request())
+            token_file.parent.mkdir(parents=True, exist_ok=True)
+            token_file.write_text(creds.to_json())
+        except RefreshError as exc:
+            if _is_revoked_or_expired_token_error(exc):
+                creds = None
+                if token_file.exists():
+                    token_file.unlink()
+            else:
+                raise
 
     if not creds or not creds.valid:
         if not credentials_file.exists():
@@ -46,6 +55,12 @@ def load_google_credentials(credentials_file: Path, token_file: Path, scopes: li
         token_file.parent.mkdir(parents=True, exist_ok=True)
         token_file.write_text(creds.to_json())
     return creds
+
+
+def _is_revoked_or_expired_token_error(exc: Exception) -> bool:
+    details = " ".join(str(arg) for arg in getattr(exc, "args", ()))
+    lowered = details.lower()
+    return "invalid_grant" in lowered or "expired or revoked" in lowered or "revoked" in lowered
 
 
 def build_google_service(api_name: str, version: str, credentials):

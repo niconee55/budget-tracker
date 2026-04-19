@@ -22,7 +22,7 @@ TRANSACTION_HEADER = [
     "raw_snippet",
 ]
 
-MONTH_LABEL_RE = re.compile(r"^[A-Z][a-z]+ \d{4}$")
+MONTH_LABEL_RE = re.compile(r"^[A-Z][a-z]{2,8} \d{4}$")
 
 MONTHLY_CATEGORY_COLUMN_MAP = {
     "Monthly Income": "B",
@@ -34,7 +34,8 @@ MONTHLY_CATEGORY_COLUMN_MAP = {
     "Clothes/Personal Care": "L",
     "Housing Supplies": "M",
     "Entertainment": "N",
-    UNKNOWN_CATEGORY: "V",
+    "Gifts": "V",
+    UNKNOWN_CATEGORY: "W",
 }
 
 MONTHLY_CATEGORY_COLUMN_ORDER = [
@@ -47,18 +48,11 @@ MONTHLY_CATEGORY_COLUMN_ORDER = [
     "Clothes/Personal Care",
     "Housing Supplies",
     "Entertainment",
+    "Gifts",
     UNKNOWN_CATEGORY,
 ]
 
-VISIBLE_BUDGET_COLUMN_END = "V"
-SUBWAY_EXCLUSION_TOKENS = (
-    "mta",
-    "omny",
-    "metrocard",
-    "mta subway",
-    "nyc subway",
-    "nyc transit",
-)
+VISIBLE_BUDGET_COLUMN_END = "W"
 
 
 @dataclass(slots=True)
@@ -105,7 +99,9 @@ def is_monthly_budget_sheet(rows: list[list[str]]) -> bool:
     second_row = rows[1] if len(rows) > 1 else []
     if not first_row or not second_row:
         return False
-    return first_row[0].strip().lower() == "month" and second_row[0].strip().lower().startswith("expected")
+    header_ok = first_row[0].strip().lower() == "month"
+    second_cell = second_row[0].strip().lower()
+    return header_ok and second_cell in {"expected", "expected ", "baseline"}
 
 
 def sync_monthly_budget_sheet(
@@ -168,11 +164,23 @@ def build_monthly_budget_plan(
 
     for month_label in sorted(month_totals.keys(), key=_month_sort_key):
         row_number = month_row_map.get(month_label)
+        is_new_month_row = False
         if row_number is None:
             row_number = _next_available_month_row(existing_rows)
         if row_number is None:
             row_number = len(existing_rows) + 1
+        if month_label not in month_row_map:
             month_row_map[month_label] = row_number
+            is_new_month_row = True
+
+        if is_new_month_row:
+            cell_updates.append(
+                CellUpdate(
+                    range_name=f"{sheet_name}!A{row_number}",
+                    values=[[month_label]],
+                )
+            )
+            _set_sheet_cell(existing_rows, row_number, 1, month_label)
 
         category_amounts = month_totals[month_label]
         for category in MONTHLY_CATEGORY_COLUMN_ORDER:
@@ -189,6 +197,7 @@ def build_monthly_budget_plan(
                         values=[[formula]],
                     )
                 )
+                _set_sheet_cell(existing_rows, row_number, _column_number(column_letter), formula)
 
     return MonthlyBudgetPlan(row_updates=[], cell_updates=cell_updates)
 
@@ -274,30 +283,15 @@ def ensure_sheet_header(
 def _aggregate_month_category_amounts(transactions: list[Transaction]) -> dict[str, dict[str, list[Decimal]]]:
     month_totals: dict[str, dict[str, list[Decimal]]] = defaultdict(lambda: defaultdict(list))
     for transaction in transactions:
-        if _should_exclude_from_budget_sheet(transaction):
-            continue
         month_label = _month_label(transaction.date)
         category = _sheet_category_name(transaction.category)
         month_totals[month_label][category].append(transaction.amount)
     return month_totals
 
 
-def _should_exclude_from_budget_sheet(transaction: Transaction) -> bool:
-    if transaction.category != "Transportation":
-        return False
-    searchable = " ".join(
-        part.strip().lower()
-        for part in [transaction.merchant, transaction.raw_snippet]
-        if part and part.strip()
-    )
-    return any(token in searchable for token in SUBWAY_EXCLUSION_TOKENS)
-
-
 def _month_row_map(rows: list[list[str]]) -> dict[str, int]:
     month_rows: dict[str, int] = {}
     for row_index in range(3, len(rows) + 1):
-        if _row_is_available_for_month(_sheet_row(rows, row_index)):
-            continue
         month_label = _month_label_from_cell(_sheet_cell(rows, row_index, 1))
         if month_label:
             month_rows[month_label] = row_index
@@ -349,10 +343,14 @@ def _formula_term_from_cell(value: str) -> str | None:
     cleaned = str(value).strip() if value is not None else ""
     if not cleaned:
         return None
+    if _is_placeholder_formula(cleaned):
+        return None
     if cleaned.startswith("="):
         return cleaned[1:].strip()
     numeric = _try_parse_sheet_amount(cleaned)
     if numeric is None:
+        return None
+    if numeric == Decimal("0"):
         return None
     return format(numeric, ".2f")
 
@@ -410,6 +408,17 @@ def _sheet_row(rows: list[list[str]], row_number: int) -> list[str]:
     return rows[row_number - 1]
 
 
+def _set_sheet_cell(rows: list[list[str]], row_number: int, column_number: int, value: str) -> None:
+    if row_number <= 0 or column_number <= 0:
+        return
+    while len(rows) < row_number:
+        rows.append([])
+    row = rows[row_number - 1]
+    if len(row) < column_number:
+        row.extend([""] * (column_number - len(row)))
+    row[column_number - 1] = value
+
+
 def _month_label(date_text: str) -> str:
     return datetime.fromisoformat(date_text).strftime("%B %Y")
 
@@ -417,7 +426,10 @@ def _month_label(date_text: str) -> str:
 def _month_label_from_cell(value: str) -> str | None:
     cleaned = str(value).strip() if value is not None else ""
     if cleaned and MONTH_LABEL_RE.match(cleaned):
-        return cleaned
+        return _normalize_month_label(cleaned)
+    date_label = _month_label_from_date_text(cleaned)
+    if date_label:
+        return date_label
     serial_month_label = _month_label_from_serial(cleaned)
     if serial_month_label:
         return serial_month_label
@@ -437,9 +449,45 @@ def _month_label_from_serial(value: str) -> str | None:
     return date_value.strftime("%B %Y")
 
 
+def _month_label_from_date_text(value: str) -> str | None:
+    if not value:
+        return None
+    for fmt in ("%m/%d/%Y", "%m/%d/%y", "%m/%-d/%Y", "%m/%-d/%y", "%-m/%d/%Y", "%-m/%d/%y", "%-m/%-d/%Y", "%-m/%-d/%y"):
+        try:
+            return datetime.strptime(value, fmt).strftime("%B %Y")
+        except ValueError:
+            continue
+    match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{2,4})", value)
+    if not match:
+        return None
+    month, day, year = match.groups()
+    year_int = int(year)
+    if year_int < 100:
+        year_int += 2000
+    try:
+        return datetime(year_int, int(month), int(day)).strftime("%B %Y")
+    except ValueError:
+        return None
+
+
 def _month_sort_key(month_label: str) -> tuple[int, int]:
-    dt = datetime.strptime(month_label, "%B %Y")
+    normalized = _normalize_month_label(month_label)
+    if normalized is None:
+        raise ValueError(f"Unrecognized month label: {month_label}")
+    dt = datetime.strptime(normalized, "%B %Y")
     return dt.year, dt.month
+
+
+def _normalize_month_label(value: str) -> str | None:
+    cleaned = str(value).strip()
+    if not cleaned:
+        return None
+    for fmt in ("%B %Y", "%b %Y"):
+        try:
+            return datetime.strptime(cleaned, fmt).strftime("%B %Y")
+        except ValueError:
+            continue
+    return None
 
 
 def _column_number(column_letter: str) -> int:
@@ -483,18 +531,15 @@ def format_currency(value: Decimal) -> str:
 
 def _next_available_month_row(rows: list[list[str]]) -> int | None:
     for row_index in range(3, len(rows) + 1):
-        if _row_is_available_for_month(_sheet_row(rows, row_index)):
+        if _row_has_available_month_slot(_sheet_row(rows, row_index)):
             return row_index
     return None
 
 
-def _row_is_available_for_month(row: list[str]) -> bool:
+def _row_has_available_month_slot(row: list[str]) -> bool:
     if not row:
         return True
-    for column_number in range(1, _column_number(VISIBLE_BUDGET_COLUMN_END) + 1):
-        if _sheet_value_present(_row_cell_by_number(row, column_number)):
-            return False
-    return True
+    return not _sheet_value_present(_row_cell_by_number(row, 1))
 
 
 def _row_cell(row: list[str], column_letter: str) -> str:
@@ -515,6 +560,14 @@ def _row_cell_by_number(row: list[str], column_number: int) -> str:
 
 def _sheet_value_present(value: str) -> bool:
     return bool(str(value).strip()) if value is not None else False
+
+
+def _is_placeholder_formula(value: str) -> bool:
+    cleaned = str(value).strip()
+    if not cleaned.startswith("="):
+        return False
+    compact = re.sub(r"\s+", "", cleaned).lower()
+    return bool(re.fullmatch(r'=if\(a\d+<>""?,0,""\)', compact))
 
 
 def _should_use_formatted_value_for_column(column_number: int) -> bool:

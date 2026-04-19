@@ -20,6 +20,7 @@ CATEGORIES = [
     "Clothes/Personal Care",
     "Housing Supplies",
     "Entertainment",
+    "Gifts",
 ]
 
 UNKNOWN_CATEGORY = "Unknown"
@@ -90,6 +91,18 @@ class TransactionCategorizer:
     def categorize(self, parsed: ParsedEmail) -> Transaction:
         merchant_text = normalize_text(parsed.merchant)
         body_text = normalize_text(parsed.raw_snippet)
+        if parsed.source_name == "capital_one_deposit":
+            return Transaction(
+                amount=parsed.amount.copy_abs(),
+                date=parsed.date,
+                merchant=parsed.merchant,
+                category="Monthly Income",
+                source_file=parsed.source_file,
+                raw_snippet=parsed.raw_snippet,
+                source_name=parsed.source_name,
+                account_last4=parsed.account_last4,
+                confidence=0.99,
+            )
         if parsed.source_name in {"venmo_incoming", "venmo_received"} and self._looks_like_income(body_text):
             return Transaction(
                 amount=parsed.amount.copy_abs(),

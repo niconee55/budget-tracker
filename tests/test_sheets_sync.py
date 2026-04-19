@@ -4,7 +4,12 @@ from decimal import Decimal
 import unittest
 
 from budget_tracker.models import Transaction
-from budget_tracker.sheets_sync import build_monthly_budget_plan, read_budget_sheet_rows, sync_monthly_budget_sheet
+from budget_tracker.sheets_sync import (
+    build_monthly_budget_plan,
+    is_monthly_budget_sheet,
+    read_budget_sheet_rows,
+    sync_monthly_budget_sheet,
+)
 
 
 MONTHLY_HEADERS = [
@@ -29,6 +34,7 @@ MONTHLY_HEADERS = [
     "of NYC income a month (minus 401k)",
     "401k",
     "<----",
+    "Gifts",
     "Unknown",
 ]
 
@@ -77,6 +83,13 @@ def _empty_visible_budget_row() -> list[str]:
     return [""] * len(MONTHLY_HEADERS)
 
 
+def _placeholder_budget_row(row_number: int) -> list[str]:
+    row = [""] * len(MONTHLY_HEADERS)
+    for column_letter in ("C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "V", "W"):
+        row[_column_number(column_letter) - 1] = f'=IF(A{row_number}<>"", 0, "")'
+    return row
+
+
 def _transaction(category: str, amount: str, merchant: str = "Merchant") -> Transaction:
     return Transaction(
         amount=Decimal(amount),
@@ -92,6 +105,11 @@ def _transaction(category: str, amount: str, merchant: str = "Merchant") -> Tran
 
 
 class MonthlySheetPlanTests(unittest.TestCase):
+    def test_monthly_sheet_detection_accepts_baseline_row(self) -> None:
+        rows = _monthly_sheet_rows()
+        rows[1][0] = "Baseline"
+        self.assertTrue(is_monthly_budget_sheet(rows))
+
     def test_build_monthly_budget_plan_targets_only_allowed_budget_columns(self) -> None:
         transactions = [
             _transaction("Monthly Income", "1200.00", "Payroll"),
@@ -103,6 +121,7 @@ class MonthlySheetPlanTests(unittest.TestCase):
             _transaction("Clothes/Personal Care", "9.00", "Sephora"),
             _transaction("Housing Supplies", "10.00", "Home Depot"),
             _transaction("Entertainment", "11.00", "Netflix"),
+            _transaction("Gifts", "12.34", "Birthday gift"),
             _transaction("Mystery Expense", "1.11", "Unknown Vendor"),
         ]
 
@@ -123,12 +142,14 @@ class MonthlySheetPlanTests(unittest.TestCase):
                 "Sheet1!M3",
                 "Sheet1!N3",
                 "Sheet1!V3",
+                "Sheet1!W3",
             },
         )
         self.assertEqual(updates["Sheet1!B3"], "=1200.00")
         self.assertEqual(updates["Sheet1!F3"], "=10.00+5.00+2.25")
         self.assertEqual(updates["Sheet1!G3"], "=3.00+4.00")
-        self.assertEqual(updates["Sheet1!V3"], "=1.11")
+        self.assertEqual(updates["Sheet1!V3"], "=12.34")
+        self.assertEqual(updates["Sheet1!W3"], "=1.11")
         self.assertTrue(all(value.startswith("=") for value in updates.values()))
 
     def test_build_monthly_budget_plan_preserves_negative_reimbursement_amounts(self) -> None:
@@ -147,6 +168,7 @@ class MonthlySheetPlanTests(unittest.TestCase):
         transactions = [
             _transaction("Monthly Income", "1200.00", "Payroll"),
             _transaction("Utilities", "2.25", "Con Edison"),
+            _transaction("Gifts", "12.34", "Birthday gift"),
             _transaction("Mystery Expense", "1.11", "Unknown Vendor"),
         ]
         sheets_service = FakeSheetsService(_monthly_sheet_rows())
@@ -164,11 +186,11 @@ class MonthlySheetPlanTests(unittest.TestCase):
         batch_payload = sheets_service.batch_update_payloads[0]
         self.assertEqual(
             {item["range"] for item in batch_payload["data"]},
-            {"Sheet1!B3", "Sheet1!F3", "Sheet1!V3"},
+            {"Sheet1!B3", "Sheet1!F3", "Sheet1!V3", "Sheet1!W3"},
         )
         self.assertEqual(
             {item["values"][0][0] for item in batch_payload["data"]},
-            {"=1200.00", "=10.00+5.00+2.25", "=1.11"},
+            {"=1200.00", "=10.00+5.00+2.25", "=12.34", "=1.11"},
         )
         self.assertEqual(sheets_service.update_payloads, [])
 
@@ -203,9 +225,30 @@ class MonthlySheetPlanTests(unittest.TestCase):
 
         updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
         self.assertNotIn("Sheet1!A4", updates)
-        self.assertNotIn("Sheet1!H3", updates)
+        self.assertEqual(updates["Sheet1!H3"], "=2.90")
 
-    def test_build_monthly_budget_plan_excludes_subway_transactions_from_sheet_totals(self) -> None:
+    def test_build_monthly_budget_plan_matches_date_text_month_rows(self) -> None:
+        rows = _monthly_sheet_rows()
+        rows[2][0] = "1/1/2026"
+
+        january_transaction = Transaction(
+            amount=Decimal("2.90"),
+            date="2026-01-15",
+            merchant="Trader Joe's",
+            category="Groceries",
+            source_file="gmail:msg-2",
+            raw_snippet="Trader Joe's purchase for 2.90",
+            source_name="gmail",
+            account_last4="1234",
+            confidence=0.98,
+        )
+
+        plan = build_monthly_budget_plan(rows, [january_transaction], "Sheet1")
+
+        updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
+        self.assertEqual(updates["Sheet1!G3"], "=3.00+2.90")
+
+    def test_build_monthly_budget_plan_includes_transportation_transactions_in_sheet_totals(self) -> None:
         transactions = [
             _transaction("Transportation", "2.90", "MTA"),
             _transaction("Transportation", "2.90", "OMNY"),
@@ -216,7 +259,7 @@ class MonthlySheetPlanTests(unittest.TestCase):
         plan = build_monthly_budget_plan(_monthly_sheet_rows(), transactions, "Sheet1")
 
         updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
-        self.assertEqual(updates["Sheet1!H3"], "=28.50")
+        self.assertEqual(updates["Sheet1!H3"], "=2.90+2.90+19.00+28.50")
 
     def test_build_monthly_budget_plan_does_not_exclude_subway_restaurant(self) -> None:
         transactions = [
@@ -228,12 +271,12 @@ class MonthlySheetPlanTests(unittest.TestCase):
         updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
         self.assertEqual(updates["Sheet1!I3"], "=12.75")
 
-    def test_build_monthly_budget_plan_uses_next_available_template_row_without_writing_column_a(self) -> None:
+    def test_build_monthly_budget_plan_uses_next_available_template_row_and_writes_column_a(self) -> None:
         rows = [
             MONTHLY_HEADERS,
             ["Expected "] + [""] * (len(MONTHLY_HEADERS) - 1),
-            _empty_visible_budget_row(),
-            _empty_visible_budget_row(),
+            _placeholder_budget_row(3),
+            _placeholder_budget_row(4),
             _empty_visible_budget_row() + ["", "", "Needs:", "=E2+F2+G2+K2+L2+M2+J2"],
         ]
         rows[2][0] = "March 2026"
@@ -254,9 +297,60 @@ class MonthlySheetPlanTests(unittest.TestCase):
         plan = build_monthly_budget_plan(rows, [april_transaction], "Sheet1")
 
         updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
-        self.assertEqual(updates, {"Sheet1!G4": "=4.50"})
+        self.assertEqual(updates, {"Sheet1!A4": "April 2026", "Sheet1!G4": "=4.50"})
 
-    def test_build_monthly_budget_plan_ignores_content_beyond_column_v_when_finding_open_row(self) -> None:
+    def test_build_monthly_budget_plan_replaces_placeholder_formula_in_matching_month_cell(self) -> None:
+        rows = [
+            MONTHLY_HEADERS,
+            ["Baseline"] + [""] * (len(MONTHLY_HEADERS) - 1),
+            _placeholder_budget_row(3),
+        ]
+        rows[2][0] = "March 2026"
+
+        plan = build_monthly_budget_plan(rows, [_transaction("Groceries", "4.50", "Trader Joe's")], "Sheet1")
+
+        updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
+        self.assertEqual(updates, {"Sheet1!G3": "=4.50"})
+
+    def test_build_monthly_budget_plan_replaces_literal_zero_in_cleared_cell(self) -> None:
+        rows = [
+            MONTHLY_HEADERS,
+            ["Baseline"] + [""] * (len(MONTHLY_HEADERS) - 1),
+            _placeholder_budget_row(3),
+        ]
+        rows[2][0] = "March 2026"
+        rows[2][_column_number("W") - 1] = "0"
+
+        plan = build_monthly_budget_plan(rows, [_transaction("Mystery Expense", "1.11", "Unknown Vendor")], "Sheet1")
+
+        updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
+        self.assertEqual(updates, {"Sheet1!W3": "=1.11"})
+
+    def test_build_monthly_budget_plan_writes_gifts_to_column_v(self) -> None:
+        rows = [
+            MONTHLY_HEADERS,
+            ["Baseline"] + [""] * (len(MONTHLY_HEADERS) - 1),
+            _placeholder_budget_row(3),
+        ]
+        rows[2][0] = "April 2026"
+        gift_transaction = Transaction(
+            amount=Decimal("273.00"),
+            date="2026-04-13",
+            merchant="Papa's gift",
+            category="Gifts",
+            source_file="gmail:msg-2",
+            raw_snippet="Papa's gift purchase for 273.00",
+            source_name="gmail",
+            account_last4="1234",
+            confidence=0.98,
+        )
+
+        plan = build_monthly_budget_plan(rows, [gift_transaction], "Sheet1")
+
+        updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
+        self.assertEqual(updates, {"Sheet1!V3": "=273.00"})
+
+    def test_build_monthly_budget_plan_ignores_content_beyond_column_w_when_finding_open_row(self) -> None:
         rows = [
             MONTHLY_HEADERS,
             ["Expected "] + [""] * (len(MONTHLY_HEADERS) - 1),
@@ -280,7 +374,33 @@ class MonthlySheetPlanTests(unittest.TestCase):
         plan = build_monthly_budget_plan(rows, [april_transaction], "Sheet1")
 
         updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
-        self.assertEqual(updates, {"Sheet1!G4": "=4.50"})
+        self.assertEqual(updates, {"Sheet1!A4": "April 2026", "Sheet1!G4": "=4.50"})
+
+    def test_build_monthly_budget_plan_matches_abbreviated_month_labels_in_column_a(self) -> None:
+        rows = [
+            MONTHLY_HEADERS,
+            ["Expected "] + [""] * (len(MONTHLY_HEADERS) - 1),
+            _empty_visible_budget_row(),
+        ]
+        rows[2][0] = "Mar 2026"
+        rows[2][_column_number("G") - 1] = "=3.00"
+
+        march_transaction = Transaction(
+            amount=Decimal("4.50"),
+            date="2026-03-20",
+            merchant="Trader Joe's",
+            category="Groceries",
+            source_file="gmail:msg-2",
+            raw_snippet="Trader Joe's purchase for 4.50",
+            source_name="gmail",
+            account_last4="1234",
+            confidence=0.98,
+        )
+
+        plan = build_monthly_budget_plan(rows, [march_transaction], "Sheet1")
+
+        updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
+        self.assertEqual(updates, {"Sheet1!G3": "=3.00+4.50"})
 
 
 class FakeSheetsService:

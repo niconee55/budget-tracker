@@ -20,6 +20,7 @@ output/
 *.log
 tmp/
 SESSION_NOTES.md
+agent_reports/
 
 # Google / personal sync data
 google_sync/*

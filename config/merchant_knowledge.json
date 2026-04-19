@@ -35,6 +35,10 @@
     "Entertainment": {
       "keywords": ["netflix", "spotify", "movie", "cinema", "steam", "concert", "entertainment", "amc theaters", "amc theatres", "movie theater", "beer", "weed", "cannabis", "dispensary", "edible", "joint", "blunt", "gas pack"],
       "descriptors": ["entertainment streaming movie gaming music events leisure subscription theater tickets nightlife beer drinks bar cannabis weed dispensary edible smoking social outing"]
+    },
+    "Gifts": {
+      "keywords": ["gift", "gifts", "present", "birthday gift", "holiday gift"],
+      "descriptors": ["gifts present birthday holiday person to person transfer gift payment reimbursement for a gift"]
     }
   },
   "merchants": {
@@ -112,6 +116,11 @@
       "aliases": ["home depot", "ikea", "lowes"],
       "category": "Housing Supplies",
       "description": "home improvement hardware housing supplies furniture"
+    },
+    "Target": {
+      "aliases": ["target", "target store", "target t-"],
+      "category": "Clothes/Personal Care",
+      "description": "clothes personal care beauty toiletries apparel grooming household basics"
     },
     "Lowe's": {
       "aliases": ["lowes", "lowe's"],

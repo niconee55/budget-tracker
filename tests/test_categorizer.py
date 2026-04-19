@@ -20,8 +20,10 @@ class CategorizerTests(unittest.TestCase):
             ("CHEF CHANG EXPRESS", "takeout order", "Eating Out"),
             ("CVS Pharmacy", "prescription refill", "Healthcare"),
             ("Sephora", "skincare and cosmetics", "Clothes/Personal Care"),
+            ("Target", "toiletries and clothes", "Clothes/Personal Care"),
             ("Home Depot", "cleaning supplies and bulbs", "Housing Supplies"),
             ("Netflix", "monthly streaming subscription", "Entertainment"),
+            ("Venmo", "birthday gift for dad", "Gifts"),
         ]
         for merchant, description, expected in cases:
             with self.subTest(merchant=merchant):
@@ -91,3 +93,19 @@ class CategorizerTests(unittest.TestCase):
         self.assertEqual(transaction.category, "Eating Out")
         self.assertGreaterEqual(transaction.confidence, 0.72)
         lookup_service.lookup.assert_called_once_with("Sweetgreen", "purchase receipt")
+
+    def test_categorizes_capital_one_deposit_as_monthly_income(self) -> None:
+        transaction = TransactionCategorizer(lookup_service=Mock()).categorize(
+            ParsedEmail(
+                source_name="capital_one_deposit",
+                date="2026-04-10",
+                merchant="Direct Deposit",
+                amount=Decimal("3396.70"),
+                account_last4="0140",
+                raw_snippet="You received a deposit of $3,396.70 into your account ending in 0140.",
+                source_file="deposit.txt",
+            )
+        )
+
+        self.assertEqual(transaction.category, "Monthly Income")
+        self.assertEqual(transaction.amount, Decimal("3396.70"))

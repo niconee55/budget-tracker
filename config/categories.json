@@ -55,6 +55,12 @@
       "merchants": ["netflix", "spotify", "hulu", "disney", "amc", "regal", "steam", "apple", "youtube", "ticketmaster"]
     },
     {
+      "name": "Gifts",
+      "description": "Gift purchases, gift payments, presents, and similar one-off transfers meant as gifts.",
+      "keywords": ["gift", "gifts", "present", "birthday", "holiday gift"],
+      "merchants": []
+    },
+    {
       "name": "Unknown",
       "description": "Transactions that could not be confidently categorized. Review these manually and update merchant knowledge as needed.",
       "keywords": ["unknown", "uncategorized", "misc"],

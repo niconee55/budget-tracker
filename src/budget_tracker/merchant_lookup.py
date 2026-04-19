@@ -25,6 +25,7 @@ ALLOWED_CATEGORIES = [
     "Clothes/Personal Care",
     "Housing Supplies",
     "Entertainment",
+    "Gifts",
     "Unknown",
 ]
 OUTPUT_SCHEMA = {

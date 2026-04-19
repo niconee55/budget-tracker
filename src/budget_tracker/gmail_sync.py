@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .categorizer import TransactionCategorizer
 from .models import Transaction
@@ -9,10 +9,20 @@ from .parser import extract_transaction_from_email_data, parse_email_bytes
 
 
 @dataclass(slots=True)
+class SkippedMessage:
+    message_id: str
+    subject: str
+    sender: str
+    reason: str
+
+
+@dataclass(slots=True)
 class GmailSyncResult:
     transactions: list[Transaction]
-    skipped_message_ids: list[str]
+    skipped_message_ids: list[str] = field(default_factory=list)
+    skipped_messages: list[SkippedMessage] = field(default_factory=list)
     processed_message_ids: list[str] | None = None
+    max_internal_date_ms: int | None = None
 
 
 def fetch_transactions_from_gmail(
@@ -28,7 +38,9 @@ def fetch_transactions_from_gmail(
         since_internal_date_ms = since_epoch_ms
     parsed_transactions: list[Transaction] = []
     skipped_message_ids: list[str] = []
+    skipped_messages: list[SkippedMessage] = []
     processed_message_ids: list[str] = []
+    max_internal_date_ms: int | None = None
     page_token: str | None = None
     remaining = max_results
 
@@ -55,20 +67,46 @@ def fetch_transactions_from_gmail(
                 internal_date = int(detail.get("internalDate", "0") or "0")
                 if since_internal_date_ms is not None and internal_date <= since_internal_date_ms:
                     continue
+                if max_internal_date_ms is None or internal_date > max_internal_date_ms:
+                    max_internal_date_ms = internal_date
                 raw_payload = detail.get("raw")
                 if not raw_payload:
                     skipped_message_ids.append(message_id)
+                    skipped_messages.append(
+                        SkippedMessage(
+                            message_id=message_id,
+                            subject="",
+                            sender="",
+                            reason="Message payload did not contain raw email content.",
+                        )
+                    )
                     continue
                 raw_bytes = decode_gmail_raw_message(raw_payload)
                 email_data = parse_email_bytes(raw_bytes)
                 parsed = extract_transaction_from_email_data(email_data, source_file=f"gmail:{message_id}")
             except Exception:
                 skipped_message_ids.append(message_id)
+                skipped_messages.append(
+                    SkippedMessage(
+                        message_id=message_id,
+                        subject=locals().get("email_data", {}).get("subject", ""),
+                        sender=locals().get("email_data", {}).get("sender", ""),
+                        reason="Message could not be parsed into a transaction.",
+                    )
+                )
                 continue
 
             processed_message_ids.append(message_id)
             if parsed is None:
                 skipped_message_ids.append(message_id)
+                skipped_messages.append(
+                    SkippedMessage(
+                        message_id=message_id,
+                        subject=email_data.get("subject", ""),
+                        sender=email_data.get("sender", ""),
+                        reason=_skip_reason(email_data),
+                    )
+                )
                 continue
             parsed_transactions.append(categorizer.categorize(parsed))
 
@@ -80,7 +118,9 @@ def fetch_transactions_from_gmail(
     return GmailSyncResult(
         transactions=parsed_transactions,
         skipped_message_ids=skipped_message_ids,
+        skipped_messages=skipped_messages,
         processed_message_ids=processed_message_ids,
+        max_internal_date_ms=max_internal_date_ms,
     )
 
 
@@ -142,3 +182,37 @@ def build_summary_rows(categorizer: TransactionCategorizer, transactions: list[T
     for category, total in summary.items():
         rows.append([category, total])
     return rows
+
+
+def _skip_reason(email_data: dict[str, str]) -> str:
+    subject = email_data.get("subject", "").strip()
+    sender = email_data.get("sender", "").strip()
+    body = email_data.get("body", "").lower()
+    html_body = email_data.get("html_body", "").lower()
+    combined = " ".join(part for part in [subject.lower(), body, html_body] if part)
+
+    if "shop with points" in combined:
+        return "Promotional email, not a budget transaction."
+    if "new statement online" in combined or "paperless statement is ready" in combined:
+        return "Statement notification, not a transaction alert."
+    if "received your payment" in combined or "thanks for your payment" in combined:
+        return "Card payment confirmation, not spending activity."
+    if "transaction history" in combined:
+        return "Venmo history or summary email, not a single transaction alert."
+    if "wealthfront brokerage llc" in combined:
+        return "Transfer to or from Wealthfront is intentionally ignored."
+    if "venmo has initiated the following withdrawal" in combined:
+        return "Capital One Venmo funding withdrawal is intentionally ignored to avoid double counting."
+    if "discover has initiated the following withdrawal" in combined:
+        return "Discover withdrawal notice is intentionally ignored because it is tracked separately."
+    if "synergy fi" in combined:
+        return "Ambiguous Synergy merchant is intentionally ignored for manual handling."
+    if "withdrawal notice" in combined:
+        return "Withdrawal notice did not map to a tracked transaction type."
+    if "capitalone@notification.capitalone.com" in sender.lower() or "capital one" in sender.lower():
+        return "Capital One message did not match a tracked transaction template."
+    if "discover" in sender.lower():
+        return "Discover message did not match a tracked transaction template."
+    if "venmo" in sender.lower():
+        return "Venmo message did not match a tracked transaction template."
+    return "Message did not match a tracked transaction template."

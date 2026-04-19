@@ -192,6 +192,7 @@ class CliEndToEndTests(unittest.TestCase):
                     "Clothes/Personal Care": "54.73",
                     "Housing Supplies": "76.01",
                     "Entertainment": "15.99",
+                    "Gifts": "0.00",
                 },
             )
 

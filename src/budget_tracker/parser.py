@@ -134,10 +134,13 @@ def extract_transaction_from_email_data(
     merchant = _first_match(source.get("merchant_patterns", []), body)
     if not merchant:
         merchant = _first_regex_list(MERCHANT_FALLBACK_PATTERNS, body)
+    merchant = _normalize_source_merchant(merchant, source)
     date_text = _first_match(source.get("date_patterns", []), body)
     if not date_text:
         date_text = _parse_date_header(email_data["date_header"]) or _first_regex(DATE_FALLBACK_RE, body)
     last4 = _first_match(source.get("last4_patterns", []), body) or _first_regex(LAST4_FALLBACK_RE, body)
+    if not merchant:
+        merchant = _default_merchant_for_source(source)
     if not amount_text or not merchant or not date_text:
         return None
     amount = _parse_amount(amount_text)
@@ -147,7 +150,7 @@ def extract_transaction_from_email_data(
     snippet_prefix = _subject_snippet_prefix(subject)
     snippet_source = " ".join(part for part in [snippet_prefix, body] if part)
     return ParsedEmail(
-        source_name=source["name"],
+        source_name=_effective_source_name(email_data, source),
         date=_normalize_date(date_text),
         merchant=_clean_value(merchant),
         amount=amount,
@@ -204,7 +207,9 @@ def match_source(email_data: dict[str, str], sources: list[dict[str, object]]) -
     for source in sources:
         if source["name"] == "generic":
             continue
-        if _matches_any(source.get("sender_patterns", []), email_data["sender"]) and _matches_any(source.get("subject_patterns", []), email_data["subject"]):
+        if not _matches_any(source.get("sender_patterns", []), email_data["sender"]):
+            continue
+        if _matches_source_content(email_data, source):
             return source
     return generic_source
 
@@ -212,12 +217,25 @@ def match_source(email_data: dict[str, str], sources: list[dict[str, object]]) -
 def _should_ignore_email(email_data: dict[str, str], source: dict[str, object]) -> bool:
     subject = email_data.get("subject", "").lower()
     body = email_data.get("body", "").lower()
+    searchable_body = "\n".join(
+        part.lower()
+        for part in [email_data.get("body", ""), _strip_html(email_data.get("html_body", ""))]
+        if part
+    )
     if source.get("name") == "venmo" and "transaction history" in subject:
         return True
     if "wealthfront brokerage llc" in body and any(
         token in body for token in ("transfer", "deposited to", "transferred has been deposited", "instant payment")
     ):
         return True
+    if source.get("name") == "capital_one_placeholder":
+        if "synergy fi" in searchable_body:
+            return True
+    if source.get("name") == "capital_one_withdrawal":
+        if "venmo has initiated the following withdrawal" in searchable_body:
+            return True
+        if "discover has initiated the following withdrawal" in searchable_body:
+            return True
     if source.get("name") == "discover":
         if "new statement online" in subject or "paperless statement is ready" in body:
             return True
@@ -312,6 +330,19 @@ def _matches_any(patterns: list[str], value: str) -> bool:
     if not patterns:
         return True
     return any(re.search(pattern, value, re.IGNORECASE) for pattern in patterns)
+
+
+def _matches_source_content(email_data: dict[str, str], source: dict[str, object]) -> bool:
+    subject_patterns = source.get("subject_patterns", [])
+    body_patterns = source.get("body_match_patterns", [])
+    subject_matches = _matches_any(subject_patterns, email_data.get("subject", "")) if subject_patterns else False
+    body_text = "\n".join(
+        part for part in [email_data.get("body", ""), _strip_html(email_data.get("html_body", ""))] if part
+    )
+    body_matches = _matches_any(body_patterns, body_text) if body_patterns else False
+    if subject_patterns or body_patterns:
+        return subject_matches or body_matches
+    return True
 
 
 def _first_match(patterns: list[str], body: str) -> str | None:
@@ -470,6 +501,39 @@ def _subject_snippet_prefix(subject: str) -> str:
     if cleaned == "Capital One Purchase Alert":
         return "Capital One purchase alert"
     return cleaned
+
+
+def _default_merchant_for_source(source: dict[str, Any]) -> str | None:
+    source_name = str(source.get("name", ""))
+    if source_name == "capital_one_deposit":
+        return "Direct Deposit"
+    if source_name == "capital_one_withdrawal":
+        return "Withdrawal"
+    return None
+
+
+def _normalize_source_merchant(merchant: str | None, source: dict[str, Any]) -> str | None:
+    if not merchant:
+        return None
+    source_name = str(source.get("name", ""))
+    cleaned = _clean_value(merchant)
+    if source_name == "capital_one_deposit" and cleaned.lower() in {"deposit", "direct deposit", "payroll deposit"}:
+        return _default_merchant_for_source(source)
+    return cleaned
+
+
+def _effective_source_name(email_data: dict[str, str], source: dict[str, Any]) -> str:
+    source_name = str(source.get("name", "generic"))
+    if source_name != "generic":
+        return source_name
+    sender = str(email_data.get("sender", "")).lower()
+    if any(token in sender for token in ("discover@services.discover.com", "services.discover.com", "discover.com")):
+        return "discover"
+    if any(token in sender for token in ("capitalone.com", "captialone.com", "capital one")):
+        return "capital_one"
+    if "venmo.com" in sender:
+        return "venmo"
+    return source_name
 
 
 def _part_content(part) -> str:
