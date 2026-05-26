@@ -248,6 +248,31 @@ class MonthlySheetPlanTests(unittest.TestCase):
         updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
         self.assertEqual(updates["Sheet1!G3"], "=3.00+2.90")
 
+    def test_build_monthly_budget_plan_accepts_slash_formatted_transaction_dates(self) -> None:
+        rows = [
+            MONTHLY_HEADERS,
+            ["Baseline"] + [""] * (len(MONTHLY_HEADERS) - 1),
+            _placeholder_budget_row(3),
+        ]
+        rows[2][0] = "April 2026"
+
+        april_transaction = Transaction(
+            amount=Decimal("10.49"),
+            date="04/19/2026",
+            merchant="Whole Foods Market",
+            category="Groceries",
+            source_file="gmail:msg-2",
+            raw_snippet="Whole Foods Market purchase for 10.49",
+            source_name="gmail",
+            account_last4="1234",
+            confidence=0.98,
+        )
+
+        plan = build_monthly_budget_plan(rows, [april_transaction], "Sheet1")
+
+        updates = {update.range_name: update.values[0][0] for update in plan.cell_updates}
+        self.assertEqual(updates, {"Sheet1!G3": "=10.49"})
+
     def test_build_monthly_budget_plan_includes_transportation_transactions_in_sheet_totals(self) -> None:
         transactions = [
             _transaction("Transportation", "2.90", "MTA"),

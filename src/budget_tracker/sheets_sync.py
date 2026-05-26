@@ -420,7 +420,14 @@ def _set_sheet_cell(rows: list[list[str]], row_number: int, column_number: int, 
 
 
 def _month_label(date_text: str) -> str:
-    return datetime.fromisoformat(date_text).strftime("%B %Y")
+    normalized = str(date_text).strip()
+    try:
+        return datetime.fromisoformat(normalized).strftime("%B %Y")
+    except ValueError:
+        parsed_label = _month_label_from_date_text(normalized)
+        if parsed_label:
+            return parsed_label
+        raise ValueError(f"Unsupported transaction date format: {date_text!r}") from None
 
 
 def _month_label_from_cell(value: str) -> str | None:

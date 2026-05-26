@@ -21,6 +21,7 @@ output/
 tmp/
 SESSION_NOTES.md
 agent_reports/
+tmp-*.sh
 
 # Google / personal sync data
 google_sync/*
