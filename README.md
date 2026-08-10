@@ -54,7 +54,7 @@ python3 -m pip install -e '.[google]'
 4. Run the Google sync command. The first run opens a browser for OAuth consent and saves `token.json`.
 5. Reuse the same `token.json` on later runs. If scopes or the client change, delete it and re-authenticate.
 6. The real budget matrix uses `Month` in column A and category headers across row 1. The updater reads the sheet first, finds the matching month row, and adds totals into the correct category cells instead of appending transactions.
-7. The writable sheet columns are limited to `F,G,H,I,K,L,M,N,V`, where `V` is `Unknown`.
+7. The writable sheet columns are limited to `B,F,G,H,I,K,L,M,N,V,W`, where `V` is `Gifts` and `W` is `Unknown`.
 8. The updater writes additive formulas such as `=8.00+2.00+3.00` into the target cell rather than replacing the cell with a bare sum.
 9. Successful Gmail syncs are recorded in `google_sync/budget_sync.db`. The active baseline scrape run is used to limit the next Gmail scan.
 10. If `google_sync/settings.json` defines Gmail sender addresses, the CLI builds the default Gmail query from those senders automatically.
@@ -88,11 +88,23 @@ PYTHONPATH=src .venv/bin/python -m budget_tracker.google_cli \
   --show-skipped
 ```
 
+Append parsed costs to a trip tab instead of the NYC budget sheet:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m budget_tracker.google_cli \
+  --trip "Taiwan/Vietnam 2026" \
+  --show-skipped
+```
+
+Trip mode still uses the same Gmail scraper and local scrape history, but it skips categorization and budget aggregation. It appends two columns to the selected tab in the Trip Costs spreadsheet: `Item` from the parsed merchant and `Cost` from the parsed amount.
+
 Key flags:
 
 - `--query` is the Gmail search query used to select messages. If omitted, the CLI builds one from the configured sender list in `google_sync/settings.json`.
 - `--output-json` and `--summary-csv` are optional. If you omit them, the run updates only Google Sheets and the local scrape history database.
 - `--spreadsheet-id` and `--sheet-name` read the existing tab and update the matching month row in place when the sheet is in monthly budget format.
+- `--trip` or `--trip-sheet-name` appends parsed costs to a trip tab, such as `Taiwan/Vietnam 2026`, instead of updating the NYC budget sheet.
+- `--trip-spreadsheet-id` overrides the Trip Costs spreadsheet. By default this comes from `trips.spreadsheet_id` in `google_sync/settings.json`; `BUDGET_TRACKER_TRIP_SPREADSHEET_ID` can override it temporarily.
 - `--summary-sheet-name` is kept for compatibility with legacy layouts.
 - `--dry-run` runs the full fetch and categorization pipeline without touching Google Sheets or advancing the active baseline scrape run in the local database.
 - `--show-skipped` prints Gmail message IDs that did not parse into transactions.

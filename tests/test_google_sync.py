@@ -193,6 +193,48 @@ Content-Type: text/html; charset="utf-8"
   </body>
 </html>
 """
+CAPITAL_ONE_RENT_WITHDRAWAL_EMAIL = b"""From: Capital One <capitalone@notification.capitalone.com>
+To: user@example.com
+Subject: Cash Withdrawal Notice
+Date: Mon, 1 Jun 2026 09:00:00 -0400
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="CAPONE-RENT-WITHDRAWAL"
+
+--CAPONE-RENT-WITHDRAWAL
+Content-Type: text/plain; charset="utf-8"
+
+Cash Withdrawal Notice
+
+--CAPONE-RENT-WITHDRAWAL
+Content-Type: text/html; charset="utf-8"
+
+<html>
+  <body>
+    <table class="darkmode">
+      <tr>
+        <td class="webfont">
+          <p>Royal Lexington has initiated the following withdrawal from your 360 Checking...0140 account:</p>
+          <p>Amount: <strong>$2,700.00</strong></p>
+          <p>From: Account ending in <strong>0140</strong></p>
+          <p>Submitted on: <strong>June 1, 2026</strong></p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+"""
+CAPITAL_ONE_APPLE_099_EMAIL = b"""From: Capital One | Savor <capitalone@notification.capitalone.com>
+To: user@example.com
+Subject: A new transaction was charged to your account
+Date: Mon, 10 Aug 2026 09:00:00 -0400
+Content-Type: text/plain; charset="utf-8"
+
+View posted transaction details.
+-- Capital One | Savor --
+A purchase was charged to your account.
+About your Savor Credit Card ending in 5363
+As requested, we're notifying you that on August 10, 2026, at APPLE.COM/BILL, a pending authorization or purchase in the amount of $0.99 was placed or charged on your Savor Credit Card.
+"""
 CAPITAL_ONE_NOTIFICATION_EMAIL = (INBOX_FIXTURES / "capitalone_notification.eml").read_bytes()
 VENMO_SENT_EMAIL = (INBOX_FIXTURES / "venmo_you_paid.txt").read_bytes()
 VENMO_RECEIVED_EMAIL = (INBOX_FIXTURES / "venmo_paid_you.txt").read_bytes()
@@ -390,6 +432,40 @@ class GoogleSyncTests(unittest.TestCase):
         self.assertEqual(
             result.skipped_messages[0].reason,
             "Capital One Venmo funding withdrawal is intentionally ignored to avoid double counting.",
+        )
+
+    def test_fetch_transactions_from_gmail_ignores_capital_one_rent_withdrawal_messages(self) -> None:
+        gmail_service = FakeGmailService({"msg-1": CAPITAL_ONE_RENT_WITHDRAWAL_EMAIL})
+
+        result = fetch_transactions_from_gmail(
+            gmail_service=gmail_service,
+            query="from:capitalone@notification.capitalone.com newer_than:1d",
+            max_results=10,
+            categorizer=TransactionCategorizer(),
+        )
+
+        self.assertEqual(result.transactions, [])
+        self.assertEqual(result.skipped_message_ids, ["msg-1"])
+        self.assertEqual(
+            result.skipped_messages[0].reason,
+            "Rent withdrawal notice is intentionally ignored because rent is already included in the budget sheet.",
+        )
+
+    def test_fetch_transactions_from_gmail_ignores_apple_099_monthly_charge(self) -> None:
+        gmail_service = FakeGmailService({"msg-1": CAPITAL_ONE_APPLE_099_EMAIL})
+
+        result = fetch_transactions_from_gmail(
+            gmail_service=gmail_service,
+            query="from:capitalone@notification.capitalone.com newer_than:1d",
+            max_results=10,
+            categorizer=TransactionCategorizer(),
+        )
+
+        self.assertEqual(result.transactions, [])
+        self.assertEqual(result.skipped_message_ids, ["msg-1"])
+        self.assertEqual(
+            result.skipped_messages[0].reason,
+            "Apple $0.99 monthly charge is intentionally ignored because it is already included in the budget sheet.",
         )
 
     def test_fetch_transactions_from_gmail_parses_venmo_sent_and_received_html_messages(self) -> None:

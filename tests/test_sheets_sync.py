@@ -5,6 +5,8 @@ import unittest
 
 from budget_tracker.models import Transaction
 from budget_tracker.sheets_sync import (
+    append_trip_cost_rows,
+    build_trip_cost_rows,
     build_monthly_budget_plan,
     is_monthly_budget_sheet,
     read_budget_sheet_rows,
@@ -105,6 +107,31 @@ def _transaction(category: str, amount: str, merchant: str = "Merchant") -> Tran
 
 
 class MonthlySheetPlanTests(unittest.TestCase):
+    def test_build_trip_cost_rows_uses_merchant_and_amount_only(self) -> None:
+        rows = build_trip_cost_rows([
+            _transaction("Groceries", "4.50", "Taipei Coffee")
+        ])
+
+        self.assertEqual(rows, [["Taipei Coffee", "4.50"]])
+
+    def test_append_trip_cost_rows_appends_to_trip_tab_columns(self) -> None:
+        sheets_service = FakeSheetsService([["Item", "Cost"]])
+
+        append_trip_cost_rows(
+            sheets_service=sheets_service,
+            spreadsheet_id="trip-spreadsheet-123",
+            sheet_name="Taiwan/Vietnam 2026",
+            transactions=[_transaction("Groceries", "4.50", "Taipei Coffee")],
+        )
+
+        self.assertEqual(len(sheets_service.append_payloads), 1)
+        append_payload = sheets_service.append_payloads[0]
+        self.assertEqual(append_payload["spreadsheetId"], "trip-spreadsheet-123")
+        self.assertEqual(append_payload["range"], "'Taiwan/Vietnam 2026'!A:B")
+        self.assertEqual(append_payload["valueInputOption"], "USER_ENTERED")
+        self.assertEqual(append_payload["insertDataOption"], "INSERT_ROWS")
+        self.assertEqual(append_payload["body"], {"values": [["Taipei Coffee", "4.50"]]})
+
     def test_monthly_sheet_detection_accepts_baseline_row(self) -> None:
         rows = _monthly_sheet_rows()
         rows[1][0] = "Baseline"
@@ -438,6 +465,7 @@ class FakeSheetsService:
         self.formatted_rows = formatted_rows if formatted_rows is not None else formula_rows
         self.update_payloads: list[dict[str, object]] = []
         self.batch_update_payloads: list[dict[str, object]] = []
+        self.append_payloads: list[dict[str, object]] = []
 
     def spreadsheets(self) -> "FakeSheetsService":
         return self
@@ -452,6 +480,10 @@ class FakeSheetsService:
 
     def update(self, **kwargs):
         self.update_payloads.append(kwargs)
+        return FakeExecute({})
+
+    def append(self, **kwargs):
+        self.append_payloads.append(kwargs)
         return FakeExecute({})
 
     def batchUpdate(self, **kwargs):  # noqa: N802 - matches Google API surface

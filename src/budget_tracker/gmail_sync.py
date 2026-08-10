@@ -32,8 +32,10 @@ def fetch_transactions_from_gmail(
     categorizer: TransactionCategorizer | None = None,
     since_epoch_ms: int | None = None,
     since_internal_date_ms: int | None = None,
+    categorize: bool = True,
 ) -> GmailSyncResult:
-    categorizer = categorizer or TransactionCategorizer()
+    if categorize:
+        categorizer = categorizer or TransactionCategorizer()
     if since_epoch_ms is not None and since_internal_date_ms is None:
         since_internal_date_ms = since_epoch_ms
     parsed_transactions: list[Transaction] = []
@@ -108,7 +110,10 @@ def fetch_transactions_from_gmail(
                     )
                 )
                 continue
-            parsed_transactions.append(categorizer.categorize(parsed))
+            if categorize:
+                assert categorizer is not None
+                parsed = categorizer.categorize(parsed)
+            parsed_transactions.append(parsed)
 
         remaining = max_results - len(processed_message_ids)
         page_token = response.get("nextPageToken")
@@ -197,6 +202,8 @@ def _skip_reason(email_data: dict[str, str]) -> str:
         return "Statement notification, not a transaction alert."
     if "received your payment" in combined or "thanks for your payment" in combined:
         return "Card payment confirmation, not spending activity."
+    if "apple" in combined and "$0.99" in combined:
+        return "Apple $0.99 monthly charge is intentionally ignored because it is already included in the budget sheet."
     if "transaction history" in combined:
         return "Venmo history or summary email, not a single transaction alert."
     if "wealthfront brokerage llc" in combined:
@@ -205,6 +212,8 @@ def _skip_reason(email_data: dict[str, str]) -> str:
         return "Capital One Venmo funding withdrawal is intentionally ignored to avoid double counting."
     if "discover has initiated the following withdrawal" in combined:
         return "Discover withdrawal notice is intentionally ignored because it is tracked separately."
+    if "withdrawal notice" in combined and ("$2,700.00" in combined or "$2700.00" in combined):
+        return "Rent withdrawal notice is intentionally ignored because rent is already included in the budget sheet."
     if "synergy fi" in combined:
         return "Ambiguous Synergy merchant is intentionally ignored for manual handling."
     if "withdrawal notice" in combined:

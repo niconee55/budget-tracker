@@ -22,6 +22,8 @@ TRANSACTION_HEADER = [
     "raw_snippet",
 ]
 
+TRIP_COST_HEADER = ["Item", "Cost"]
+
 MONTH_LABEL_RE = re.compile(r"^[A-Z][a-z]{2,8} \d{4}$")
 
 MONTHLY_CATEGORY_COLUMN_MAP = {
@@ -150,6 +152,36 @@ def sync_monthly_budget_sheet(
     return plan
 
 
+def build_trip_cost_rows(transactions: list[Transaction]) -> list[list[str]]:
+    return [
+        [transaction.merchant, format(transaction.amount, "f")]
+        for transaction in transactions
+    ]
+
+
+def append_trip_cost_rows(
+    sheets_service,
+    spreadsheet_id: str,
+    sheet_name: str,
+    transactions: list[Transaction],
+) -> None:
+    rows = build_trip_cost_rows(transactions)
+    if not rows:
+        return
+    (
+        sheets_service.spreadsheets()
+        .values()
+        .append(
+            spreadsheetId=spreadsheet_id,
+            range=_sheet_range(sheet_name, "A:B"),
+            valueInputOption="USER_ENTERED",
+            insertDataOption="INSERT_ROWS",
+            body={"values": rows},
+        )
+        .execute()
+    )
+
+
 def build_monthly_budget_plan(
     existing_rows: list[list[str]],
     transactions: list[Transaction],
@@ -176,7 +208,7 @@ def build_monthly_budget_plan(
         if is_new_month_row:
             cell_updates.append(
                 CellUpdate(
-                    range_name=f"{sheet_name}!A{row_number}",
+                    range_name=_sheet_range(sheet_name, f"A{row_number}"),
                     values=[[month_label]],
                 )
             )
@@ -193,7 +225,7 @@ def build_monthly_budget_plan(
             if formula:
                 cell_updates.append(
                     CellUpdate(
-                        range_name=f"{sheet_name}!{column_letter}{row_number}",
+                        range_name=_sheet_range(sheet_name, f"{column_letter}{row_number}"),
                         values=[[formula]],
                     )
                 )
@@ -225,7 +257,7 @@ def write_transaction_rows_legacy(
         .values()
         .append(
             spreadsheetId=spreadsheet_id,
-            range=f"{sheet_name}!A1",
+            range=_sheet_range(sheet_name, "A1"),
             valueInputOption="USER_ENTERED",
             insertDataOption="INSERT_ROWS",
             body={"values": rows_to_append},
@@ -589,6 +621,13 @@ def _column_letter(column_number: int) -> str:
         value, rem = divmod(value - 1, 26)
         letters = chr(65 + rem) + letters
     return letters
+
+
+def _sheet_range(sheet_name: str, cell_range: str) -> str:
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", sheet_name):
+        return f"{sheet_name}!{cell_range}"
+    escaped_name = sheet_name.replace("'", "''")
+    return f"'{escaped_name}'!{cell_range}"
 
 
 def _filter_rows_to_append(

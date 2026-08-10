@@ -217,6 +217,48 @@ class ParserTests(unittest.TestCase):
 
         self.assertIsNone(transaction)
 
+    def test_ignores_capital_one_2700_withdrawal_notice_for_rent(self) -> None:
+        email_data = {
+            "sender": "Capital One <capitalone@notification.capitalone.com>",
+            "subject": "Cash Withdrawal Notice",
+            "date_header": "Mon, 01 Jun 2026 09:00:00 -0400",
+            "body": "Cash Withdrawal Notice",
+            "html_body": """
+                <table class="darkmode">
+                  <tr>
+                    <td class="webfont">
+                      <p>Royal Lexington has initiated the following withdrawal from your 360 Checking...0140 account:</p>
+                      <p>Amount: <strong>$2,700.00</strong></p>
+                      <p>From: Account ending in <strong>0140</strong></p>
+                      <p>Submitted on: <strong>June 1, 2026</strong></p>
+                    </td>
+                  </tr>
+                </table>
+            """,
+        }
+
+        transaction = extract_transaction_from_email_data(email_data, "gmail:test-rent-withdrawal")
+
+        self.assertIsNone(transaction)
+
+    def test_ignores_apple_099_monthly_charge(self) -> None:
+        email_data = {
+            "sender": "Capital One | Savor <capitalone@notification.capitalone.com>",
+            "subject": "A new transaction was charged to your account",
+            "date_header": "Mon, 10 Aug 2026 09:00:00 -0400",
+            "body": (
+                "View posted transaction details. -- Capital One | Savor -- "
+                "A purchase was charged to your account. About your Savor Credit Card ending in 5363 "
+                "As requested, we're notifying you that on August 10, 2026, at APPLE.COM/BILL, "
+                "a pending authorization or purchase in the amount of $0.99 was placed or charged on your Savor Credit Card."
+            ),
+            "html_body": "",
+        }
+
+        transaction = extract_transaction_from_email_data(email_data, "gmail:test-apple-099")
+
+        self.assertIsNone(transaction)
+
     def test_parses_venmo_incoming_fixture_from_html_body(self) -> None:
         transaction = parse_transaction_file(INBOX_FIXTURES / "venmo_received.eml")
         self.assertEqual(transaction.date, "2026-03-27")

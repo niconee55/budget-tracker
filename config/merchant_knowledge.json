@@ -136,6 +136,11 @@
       "aliases": ["amc theatres", "amc theaters", "amc movie theater"],
       "category": "Entertainment",
       "description": "movie theater tickets entertainment concessions"
+    },
+    "Lexington Public": {
+      "aliases": ["lexington public", "lexinton public"],
+      "category": "Entertainment",
+      "description": "neighborhood bar nightlife drinks entertainment"
     }
   }
 }

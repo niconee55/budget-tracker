@@ -33,6 +33,7 @@ def _apply_env_overrides(config: dict[str, object]) -> dict[str, object]:
     paths = dict(config.get("paths", {}))
     gmail = dict(config.get("gmail", {}))
     sheets = dict(config.get("sheets", {}))
+    trips = dict(config.get("trips", {}))
     paths.setdefault("db_file", str(SYNC_DB_FILE))
     _set_if_env(paths, "credentials_file", "BUDGET_TRACKER_CREDENTIALS_FILE")
     _set_if_env(paths, "token_file", "BUDGET_TRACKER_TOKEN_FILE")
@@ -42,10 +43,12 @@ def _apply_env_overrides(config: dict[str, object]) -> dict[str, object]:
     _set_if_env(sheets, "spreadsheet_id", "BUDGET_TRACKER_SPREADSHEET_ID")
     _set_if_env(sheets, "sheet_name", "BUDGET_TRACKER_SHEET_NAME")
     _set_if_env(sheets, "summary_sheet_name", "BUDGET_TRACKER_SUMMARY_SHEET_NAME")
+    _set_if_env(trips, "spreadsheet_id", "BUDGET_TRACKER_TRIP_SPREADSHEET_ID")
 
     config["paths"] = paths
     config["gmail"] = gmail
     config["sheets"] = sheets
+    config["trips"] = trips
     return config
 
 

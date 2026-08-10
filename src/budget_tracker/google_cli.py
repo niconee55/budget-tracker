@@ -10,9 +10,12 @@ from .config import load_google_sync_config
 from .db import BudgetDatabase
 from .gmail_sync import build_summary_rows, build_transaction_rows, fetch_transactions_from_gmail
 from .google_auth import build_google_service, load_google_credentials
+from .models import Transaction
+from .parser import ParsedEmail
 from .reporting import write_summary, write_transactions, write_transactions_csv
 from .state import utc_now_iso
 from .sheets_sync import (
+    append_trip_cost_rows,
     append_rows_to_sheet,
     read_budget_sheet_rows,
     read_rows_from_sheet,
@@ -28,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     paths = sync_config.get("paths", {})
     gmail_defaults = sync_config.get("gmail", {})
     sheets_defaults = sync_config.get("sheets", {})
+    trip_defaults = sync_config.get("trips", {})
     path_defaults = sync_config.get("paths", {})
     parser = argparse.ArgumentParser(
         description="Fetch transaction emails from Gmail and write categorized results to local files and Google Sheets."
@@ -48,6 +52,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--spreadsheet-id", default=sheets_defaults.get("spreadsheet_id"))
     parser.add_argument("--sheet-name", default=sheets_defaults.get("sheet_name"))
     parser.add_argument("--summary-sheet-name", default=sheets_defaults.get("summary_sheet_name"))
+    parser.add_argument(
+        "--trip",
+        "--trip-sheet-name",
+        dest="trip_sheet_name",
+        help='Append parsed transactions to this tab in the Trip Costs spreadsheet, for example "Taiwan/Vietnam 2026".',
+    )
+    parser.add_argument(
+        "--trip-spreadsheet-id",
+        default=trip_defaults.get("spreadsheet_id"),
+        help="Spreadsheet id for the Trip Costs file. Can also be set with BUDGET_TRACKER_TRIP_SPREADSHEET_ID.",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -70,6 +85,7 @@ def main() -> int:
     if not hasattr(args, "db_file"):
         args.db_file = Path("google_sync/budget_sync.db")
     _validate_args(args)
+    trip_mode = _trip_mode(args)
 
     db = BudgetDatabase(args.db_file)
     db.ensure_schema()
@@ -94,24 +110,39 @@ def main() -> int:
     try:
         credentials = load_google_credentials(args.credentials_file, args.token_file)
         gmail_service = build_google_service("gmail", "v1", credentials)
-        categorizer = TransactionCategorizer()
+        categorizer = None if trip_mode else TransactionCategorizer()
         result = fetch_transactions_from_gmail(
             gmail_service=gmail_service,
             query=args.query,
             max_results=args.max_results,
             categorizer=categorizer,
             since_internal_date_ms=baseline_internal_date_ms,
+            categorize=not trip_mode,
         )
+        if trip_mode:
+            result.transactions = [
+                _trip_transaction_from_parsed(transaction)
+                for transaction in result.transactions
+            ]
 
         db.record_transactions(run_id, result.transactions, inserted_at_utc=run_started_at)
 
         if args.output_json:
             write_transactions(args.output_json, result.transactions)
         if args.summary_csv:
+            assert categorizer is not None
             write_summary(args.summary_csv, categorizer.summarize(result.transactions))
         write_transactions_csv(latest_scrape_csv, result.transactions)
 
-        if args.spreadsheet_id and args.sheet_name and not getattr(args, "dry_run", False):
+        if trip_mode and not getattr(args, "dry_run", False):
+            sheets_service = build_google_service("sheets", "v4", credentials)
+            append_trip_cost_rows(
+                sheets_service=sheets_service,
+                spreadsheet_id=args.trip_spreadsheet_id,
+                sheet_name=args.trip_sheet_name,
+                transactions=result.transactions,
+            )
+        elif args.spreadsheet_id and args.sheet_name and not getattr(args, "dry_run", False):
             sheets_service = build_google_service("sheets", "v4", credentials)
             existing_rows = read_budget_sheet_rows(
                 sheets_service=sheets_service,
@@ -126,7 +157,10 @@ def main() -> int:
                 existing_rows=existing_rows,
             )
 
-        _print_transaction_summary(result.transactions)
+        if trip_mode:
+            _print_trip_cost_summary(result.transactions, args.trip_sheet_name)
+        else:
+            _print_transaction_summary(result.transactions)
 
         if args.show_skipped:
             _print_skipped_summary(result)
@@ -161,18 +195,47 @@ def _validate_args(args: argparse.Namespace) -> None:
     spreadsheet_id = getattr(args, "spreadsheet_id", None)
     sheet_name = getattr(args, "sheet_name", None)
     summary_sheet_name = getattr(args, "summary_sheet_name", None)
+    trip_sheet_name = getattr(args, "trip_sheet_name", None)
+    trip_spreadsheet_id = getattr(args, "trip_spreadsheet_id", None)
     dry_run = getattr(args, "dry_run", False)
+    trip_mode = bool(trip_sheet_name)
 
     if hasattr(args, "query") and not query:
         raise SystemExit("--query is required")
     if max_results <= 0:
         raise SystemExit("--max-results must be greater than 0")
+    if trip_mode:
+        if summary_csv:
+            raise SystemExit("--summary-csv is not supported with --trip because trip mode skips categorization")
+        if not trip_spreadsheet_id and not dry_run:
+            raise SystemExit("--trip-spreadsheet-id is required with --trip")
+        return
     if not any([output_json, summary_csv, spreadsheet_id]) and not dry_run:
         raise SystemExit("provide at least one output target: local files, sheet sync, or --dry-run")
     if bool(spreadsheet_id) != bool(sheet_name) and not dry_run:
         raise SystemExit("--spreadsheet-id and --sheet-name must be provided together")
     if summary_sheet_name and not spreadsheet_id and not dry_run:
         raise SystemExit("--summary-sheet-name requires --spreadsheet-id and --sheet-name")
+
+
+def _trip_mode(args: argparse.Namespace) -> bool:
+    return bool(getattr(args, "trip_sheet_name", None))
+
+
+def _trip_transaction_from_parsed(parsed: ParsedEmail | Transaction) -> Transaction:
+    if isinstance(parsed, Transaction):
+        return parsed
+    return Transaction(
+        amount=parsed.amount,
+        date=parsed.date,
+        merchant=parsed.merchant,
+        category=UNKNOWN_CATEGORY,
+        source_file=parsed.source_file,
+        raw_snippet=parsed.raw_snippet,
+        source_name=parsed.source_name,
+        account_last4=parsed.account_last4,
+        confidence=0.0,
+    )
 
 
 def _load_sync_defaults() -> dict[str, object]:
@@ -258,6 +321,16 @@ def _print_transaction_summary(transactions) -> None:
             ]
         )
     for line in _format_table_lines(unknown_rows):
+        print(line)
+
+
+def _print_trip_cost_summary(transactions, trip_sheet_name: str) -> None:
+    print(f"Trip costs written to: {trip_sheet_name}")
+    rows = [
+        [transaction.merchant, f"${transaction.amount:.2f}"]
+        for transaction in transactions
+    ]
+    for line in _format_table_lines(rows):
         print(line)
 
 

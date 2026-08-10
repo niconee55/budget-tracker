@@ -46,6 +46,10 @@ class CategorizerTests(unittest.TestCase):
             categorize_transaction("AMC Theatres", "ticket purchase"),
             "Entertainment",
         )
+        self.assertEqual(
+            categorize_transaction("Lexinton Public", "purchase receipt"),
+            "Entertainment",
+        )
 
     def test_routes_beer_weed_and_non_gasoline_gas_descriptions_to_entertainment(self) -> None:
         self.assertEqual(
