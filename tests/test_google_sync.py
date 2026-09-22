@@ -53,6 +53,17 @@ Content-Type: text/plain; charset="utf-8"
 Thanks for your payment.
 Your Payment of $1,016.88 posted to your account on March 12, 2026.
 """
+CAPITAL_ONE_STATEMENT_READY_EMAIL = """From: Capital One | Venture <capitalone@notification.capitalone.com>
+To: user@example.com
+Subject: Your account
+Content-Type: text/plain; charset="utf-8"
+
+Your Venture Credit Card statement is ready.
+View your statement now.
+Statement Balance: $1,234.56
+Minimum Payment Due: $35.00
+Payment Due Date: October 9, 2026
+"""
 CAPITAL_ONE_WEALTHFRONT_EMAIL = """From: capitalone@notification.capitalone.com
 To: user@example.com
 Subject: You've received an instant payment
@@ -529,6 +540,20 @@ class GoogleSyncTests(unittest.TestCase):
         self.assertEqual(result.skipped_message_ids, ["msg-statement", "msg-payment"])
         self.assertEqual(result.skipped_messages[0].reason, "Statement notification, not a transaction alert.")
         self.assertEqual(result.skipped_messages[1].reason, "Card payment confirmation, not spending activity.")
+
+    def test_fetch_transactions_from_gmail_ignores_capital_one_statement_ready_messages(self) -> None:
+        gmail_service = FakeGmailService({"msg-statement": CAPITAL_ONE_STATEMENT_READY_EMAIL.encode("utf-8")})
+
+        result = fetch_transactions_from_gmail(
+            gmail_service=gmail_service,
+            query="from:capitalone@notification.capitalone.com newer_than:7d",
+            max_results=10,
+            categorizer=TransactionCategorizer(),
+        )
+
+        self.assertEqual(result.transactions, [])
+        self.assertEqual(result.skipped_message_ids, ["msg-statement"])
+        self.assertEqual(result.skipped_messages[0].reason, "Statement notification, not a transaction alert.")
 
     def test_fetch_transactions_from_gmail_ignores_capital_one_wealthfront_instant_payment(self) -> None:
         gmail_service = FakeGmailService({"msg-instant": CAPITAL_ONE_WEALTHFRONT_EMAIL.encode("utf-8")})

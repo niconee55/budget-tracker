@@ -43,7 +43,15 @@ class CategorizerTests(unittest.TestCase):
             "Eating Out",
         )
         self.assertEqual(
+            categorize_transaction("at Dunkin Donuts", "purchase receipt"),
+            "Eating Out",
+        )
+        self.assertEqual(
             categorize_transaction("AMC Theatres", "ticket purchase"),
+            "Entertainment",
+        )
+        self.assertEqual(
+            categorize_transaction("at PARTIFUL CO", "purchase receipt"),
             "Entertainment",
         )
         self.assertEqual(
@@ -97,6 +105,39 @@ class CategorizerTests(unittest.TestCase):
         self.assertEqual(transaction.category, "Eating Out")
         self.assertGreaterEqual(transaction.confidence, 0.72)
         lookup_service.lookup.assert_called_once_with("Sweetgreen", "purchase receipt")
+
+    def test_uses_merchant_lookup_for_recent_unknown_merchants(self) -> None:
+        cases = [
+            ("at FAMOUS FAMIGLIA PIZZER", "Eating Out", "pizza restaurant"),
+            ("at CVS", "Healthcare", "drugstore"),
+            ("at LE FOURNIL", "Eating Out", "bakery"),
+            ("at PARIS BAGUETTE -", "Eating Out", "bakery cafe"),
+        ]
+        for merchant, category, details in cases:
+            with self.subTest(merchant=merchant):
+                lookup_service = Mock()
+                lookup_service.lookup.return_value = MerchantLookupResult(
+                    category=category,
+                    confidence=0.9,
+                    details_summary=details,
+                    rationale=f"{merchant} is a {details}.",
+                    source="codex_web_search",
+                )
+
+                transaction = TransactionCategorizer(lookup_service=lookup_service).categorize(
+                    ParsedEmail(
+                        source_name="generic",
+                        date="2026-09-22",
+                        merchant=merchant,
+                        amount=Decimal("12.34"),
+                        account_last4="1234",
+                        raw_snippet="purchase receipt",
+                        source_file="lookup.txt",
+                    )
+                )
+
+                self.assertEqual(transaction.category, category)
+                lookup_service.lookup.assert_called_once_with(merchant, "purchase receipt")
 
     def test_categorizes_capital_one_deposit_as_monthly_income(self) -> None:
         transaction = TransactionCategorizer(lookup_service=Mock()).categorize(

@@ -92,6 +92,11 @@
       "category": "Eating Out",
       "description": "prepared food deli bodega quick meal snacks drinks takeout"
     },
+    "Dunkin": {
+      "aliases": ["dunkin", "dunkin donuts", "dunkin' donuts"],
+      "category": "Eating Out",
+      "description": "coffee donut breakfast fast food cafe prepared food"
+    },
     "CVS Pharmacy": {
       "aliases": ["cvs pharmacy", "cvs rx", "pharmacy"],
       "category": "Healthcare",
@@ -136,6 +141,11 @@
       "aliases": ["amc theatres", "amc theaters", "amc movie theater"],
       "category": "Entertainment",
       "description": "movie theater tickets entertainment concessions"
+    },
+    "Partiful": {
+      "aliases": ["partiful", "partiful co"],
+      "category": "Entertainment",
+      "description": "party event ticketing social event entertainment"
     },
     "Lexington Public": {
       "aliases": ["lexington public", "lexinton public"],

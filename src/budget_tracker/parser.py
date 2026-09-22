@@ -225,6 +225,10 @@ def _should_ignore_email(email_data: dict[str, str], source: dict[str, object]) 
     searchable_email = "\n".join(part for part in [subject, searchable_body] if part)
     if _is_ignored_apple_monthly_charge(searchable_email):
         return True
+    if _is_card_statement_notice(searchable_email):
+        return True
+    if _is_card_payment_confirmation(searchable_email):
+        return True
     if source.get("name") == "venmo" and "transaction history" in subject:
         return True
     if "wealthfront brokerage llc" in body and any(
@@ -240,11 +244,6 @@ def _should_ignore_email(email_data: dict[str, str], source: dict[str, object]) 
         if "discover has initiated the following withdrawal" in searchable_body:
             return True
         if _contains_amount(searchable_body, Decimal("2700.00")):
-            return True
-    if source.get("name") == "discover":
-        if "new statement online" in subject or "paperless statement is ready" in body:
-            return True
-        if "received your payment" in subject or "thanks for your payment" in body:
             return True
     return False
 
@@ -501,6 +500,26 @@ def _contains_amount(value: str, expected: Decimal) -> bool:
 def _is_ignored_apple_monthly_charge(value: str) -> bool:
     normalized = value.lower()
     return "apple" in normalized and _contains_amount(normalized, Decimal("0.99"))
+
+
+def _is_card_statement_notice(value: str) -> bool:
+    normalized = value.lower()
+    return any(
+        token in normalized
+        for token in (
+            "new statement online",
+            "paperless statement is ready",
+            "credit card statement is ready",
+            "card statement is ready",
+            "statement is ready",
+            "view your statement",
+        )
+    )
+
+
+def _is_card_payment_confirmation(value: str) -> bool:
+    normalized = value.lower()
+    return "received your payment" in normalized or "thanks for your payment" in normalized
 
 
 def _clean_value(value: str) -> str:

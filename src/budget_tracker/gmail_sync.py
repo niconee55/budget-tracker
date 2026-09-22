@@ -198,7 +198,17 @@ def _skip_reason(email_data: dict[str, str]) -> str:
 
     if "shop with points" in combined:
         return "Promotional email, not a budget transaction."
-    if "new statement online" in combined or "paperless statement is ready" in combined:
+    if any(
+        token in combined
+        for token in (
+            "new statement online",
+            "paperless statement is ready",
+            "credit card statement is ready",
+            "card statement is ready",
+            "statement is ready",
+            "view your statement",
+        )
+    ):
         return "Statement notification, not a transaction alert."
     if "received your payment" in combined or "thanks for your payment" in combined:
         return "Card payment confirmation, not spending activity."

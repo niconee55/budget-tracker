@@ -12,9 +12,10 @@ from .text import normalize_text
 
 
 DEFAULT_CODEX_BIN = "codex"
-DEFAULT_MODEL = "gpt-5.4"
+DEFAULT_MODEL = None
 DEFAULT_TIMEOUT_SECONDS = 90.0
 DISABLED_VALUES = {"0", "false", "no", "off"}
+UNSUPPORTED_LEGACY_MODELS = {"gpt-5.4"}
 ALLOWED_CATEGORIES = [
     "Monthly Income",
     "Utilities",
@@ -63,7 +64,7 @@ class MerchantLookupService:
     ) -> None:
         self.cache_path = cache_path
         self.timeout_seconds = timeout_seconds
-        self.model = model or os.getenv("BUDGET_TRACKER_MERCHANT_LOOKUP_MODEL", DEFAULT_MODEL)
+        self.model = _resolve_model(model)
         self.codex_bin = codex_bin or os.getenv("BUDGET_TRACKER_CODEX_BIN", DEFAULT_CODEX_BIN)
         self.enabled = self._resolve_enabled(enabled)
         self.cache = self._load_cache()
@@ -79,8 +80,9 @@ class MerchantLookupService:
                 return None
             return _result_from_cache_entry(cached)
         result = self._fetch_lookup_result(merchant, raw_snippet)
-        self.cache[cache_key] = asdict(result) if result is not None else {}
-        self._save_cache()
+        if result is not None and result.category != "Unknown":
+            self.cache[cache_key] = asdict(result)
+            self._save_cache()
         return result
 
     def _resolve_enabled(self, enabled: bool | None) -> bool:
@@ -115,7 +117,10 @@ class MerchantLookupService:
         return {
             key: value
             for key, value in payload.items()
-            if isinstance(key, str) and isinstance(value, dict)
+            if isinstance(key, str)
+            and isinstance(value, dict)
+            and value
+            and value.get("category") != "Unknown"
         }
 
     def _save_cache(self) -> None:
@@ -130,6 +135,7 @@ class MerchantLookupService:
             ) as output_file:
                 json.dump(OUTPUT_SCHEMA, schema_file)
                 schema_file.flush()
+                model_args = ["-m", self.model] if self.model else []
                 command = [
                     self.codex_bin,
                     "--search",
@@ -142,8 +148,7 @@ class MerchantLookupService:
                     schema_file.name,
                     "-o",
                     output_file.name,
-                    "-m",
-                    self.model,
+                    *model_args,
                     "-C",
                     str(ROOT),
                     prompt,
@@ -168,6 +173,8 @@ class MerchantLookupService:
             "Classify a personal finance transaction into exactly one of these categories: "
             f"{categories}. Use web search if needed. "
             "Prefer the merchant name first, then use the transaction text for context. "
+            "Restaurants, cafes, bakeries, pizzerias, bars, coffee shops, and prepared-food merchants are Eating Out. "
+            "Use Groceries for supermarkets and grocery stores, not prepared-food restaurants or cafes. "
             "If the merchant is ambiguous or a general marketplace, use best judgment but lower confidence. "
             "Provide details_summary as a very short phrase of a few words, not a sentence. "
             "Keep rationale to one short sentence only. "
@@ -199,6 +206,13 @@ def _parse_lookup_result(text: str) -> MerchantLookupResult | None:
         rationale=rationale,
         source="codex_web_search",
     )
+
+
+def _resolve_model(model: str | None) -> str | None:
+    selected = model or os.getenv("BUDGET_TRACKER_MERCHANT_LOOKUP_MODEL") or DEFAULT_MODEL
+    if selected in UNSUPPORTED_LEGACY_MODELS:
+        return None
+    return selected
 
 
 def _result_from_cache_entry(payload: dict[str, Any]) -> MerchantLookupResult | None:

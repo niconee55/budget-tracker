@@ -131,6 +131,6 @@ PYTHONPATH=src ./venv/bin/python -m unittest discover -s tests -v
 `config/merchant_knowledge.json` contains merchant aliases and descriptive text used by the categorizer.
 `config/categories.json` mirrors the budget categories used by the sheet, including the `Unknown` review bucket.
 
-Merchant lookup is enabled by default for merchants that do not match the local rules. It uses the local `codex` CLI in non-interactive mode with web search enabled, caches results in `google_sync/merchant_lookup_cache.json`, and falls back silently when Codex is unavailable. Set `BUDGET_TRACKER_ENABLE_MERCHANT_LOOKUP=0` to disable it. You can override the model with `BUDGET_TRACKER_MERCHANT_LOOKUP_MODEL` and the binary with `BUDGET_TRACKER_CODEX_BIN`.
+Merchant lookup is enabled by default for merchants that do not match the local rules. It uses the local `codex` CLI in non-interactive mode with web search enabled, caches results in `google_sync/merchant_lookup_cache.json`, and falls back silently when Codex is unavailable. Set `BUDGET_TRACKER_ENABLE_MERCHANT_LOOKUP=0` to disable it. By default it uses your Codex CLI configured model; leave `BUDGET_TRACKER_MERCHANT_LOOKUP_MODEL` unset unless you need an explicit override. You can override the binary with `BUDGET_TRACKER_CODEX_BIN`.
 
 `google_sync/budget_sync.db` stores both `scrape_runs` and `transactions`. `scrape_runs` is the rollback and baseline source of truth. `transactions` stores the parsed transaction records plus scrape metadata and deduplicates Gmail messages by `gmail_message_id`.

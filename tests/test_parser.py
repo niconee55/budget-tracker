@@ -259,6 +259,25 @@ class ParserTests(unittest.TestCase):
 
         self.assertIsNone(transaction)
 
+    def test_ignores_capital_one_credit_card_statement_notice(self) -> None:
+        email_data = {
+            "sender": "Capital One | Venture <capitalone@notification.capitalone.com>",
+            "subject": "Your account",
+            "date_header": "Wed, 16 Sep 2026 14:24:00 -0400",
+            "body": (
+                "Your Venture Credit Card statement is ready. "
+                "View your statement now. "
+                "Statement Balance: $1,234.56 "
+                "Minimum Payment Due: $35.00 "
+                "Payment Due Date: October 9, 2026"
+            ),
+            "html_body": "",
+        }
+
+        transaction = extract_transaction_from_email_data(email_data, "gmail:test-capital-one-statement")
+
+        self.assertIsNone(transaction)
+
     def test_parses_venmo_incoming_fixture_from_html_body(self) -> None:
         transaction = parse_transaction_file(INBOX_FIXTURES / "venmo_received.eml")
         self.assertEqual(transaction.date, "2026-03-27")
